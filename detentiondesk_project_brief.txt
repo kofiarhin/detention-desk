@@ -1,0 +1,150 @@
+Project Brief: DetentionDesk Repo Name: detention-desk Primary Domain:
+detentiondesk.com
+
+1.  Product Overview DetentionDesk is a multi-tenant MERN web
+    application for schools to manage:
+
+-   Student behaviour incidents
+-   Student rewards
+-   Automated detentions
+-   Detention lifecycle & resolution
+-   Teacher/admin notes & commentary
+-   Parent visibility & accountability Each school operates inside a
+    fully isolated tenant environment.
+
+2.  Product Positioning DetentionDesk functions as:
+
+-   Behaviour & discipline management system
+-   Detention tracking & accountability portal
+-   Parent transparency & communication tool
+-   School operations support platform Core Value Proposition: Track
+    behaviour. Enforce accountability. Reward improvement.
+
+3.  Multi-Tenant Architecture Tenant = School Every tenant-owned record
+    must include schoolId.
+
+Isolation Enforcement Pattern: - JWT contains userId + schoolId + role -
+Middleware resolves identity and sets req.auth - All database queries
+scoped by schoolId - Any lookup by id uses { _id, schoolId } - schoolId
+never accepted from client
+
+4.  Identity & Login Model Users authenticate with:
+
+-   School Code
+-   Email
+-   Password
+
+Resolution Logic: - Resolve schoolId via schoolCode - Resolve user via {
+email + schoolId }
+
+JWT Payload: - userId - schoolId - role
+
+5.  User Roles & Permissions Platform Owner (Super Admin):
+
+-   Manage schools
+-   Platform oversight
+
+School Admin: - Full CRUD within schoolId - Manage teachers, students,
+parents - Configure categories & policy - Full detention control -
+Reporting & notes management
+
+Teacher: - Access assigned students only - Issue behaviour incidents &
+rewards - Manage detentions (policy-controlled) - Notes management
+
+Parent: - Access linked children only - Read-only visibility
+
+6.  Relationship Model Relationships stored via join collections:
+
+-   TeacherStudent
+-   ParentStudent
+
+7.  School Signup Route: /signup/school Creates School + first
+    schoolAdmin + default SchoolPolicy.
+
+8.  Behaviour & Rewards Engine BehaviourIncident → auto-generates
+    detention. Reward → may reduce detention.
+
+9.  Detention System Default duration: 30 minutes. Status: pending |
+    completed | deleted. Soft delete fields required.
+
+10. Reward Offset Logic Example: 1 Reward = –5 minutes. Safeguards:
+
+-   No reward banking
+-   Only reduce pending detentions
+-   Only reduce existing detentions
+-   Past rewards never reduce future detentions
+
+11. Offset Ledger DetentionOffset records:
+
+-   rewardId
+-   detentionId
+-   minutesApplied Guarantees auditability.
+
+12. Notes System Polymorphic notes collection with parentEntityType +
+    parentEntityId.
+
+13. Category System Per-school behaviour & reward categories.
+
+14. Policy System SchoolPolicy controls:
+
+-   defaultDetentionMinutes
+-   rewardOffsetMinutes
+-   Teacher permissions
+
+15. Visibility Enforcement Teachers & parents validated via relationship
+    collections.
+
+16. Tech Stack Frontend: React (Vite), SCSS, React Router, React Query
+    Backend: Node.js, Express, MongoDB (Mongoose) Deployment: Vercel +
+    Render/Heroku + MongoDB Atlas
+
+17. MVP Roadmap
+
+18. Multi-tenant foundation
+
+19. Auth & roles
+
+20. School signup
+
+21. Admin CRUD & assignments
+
+22. Categories & policy
+
+23. Behaviour → detention engine
+
+24. Rewards → offset ledger
+
+25. Notes system
+
+26. Parent portal
+
+27. Success Criteria
+
+-   Strict tenant isolation
+-   No cross-school leakage
+-   Accurate detention calculations
+-   No reward banking loopholes
+-   Full auditability
+
+19. Schema & Index Strategy All tenant-owned documents indexed by
+    schoolId. Composite unique constraints where required.
+
+20. API Response Contracts Success: { success: true, data, meta? }
+
+Error: { success: false, error: { code, message } }
+
+21. Folder Structure Conventions server/ models/ controllers/ routes/
+    middleware/ services/
+
+client/ src/ pages/ components/ api/ styles/
+
+22. Edge-Case Logic
+
+-   Multiple detentions → reduce oldest first
+-   Partial reductions allowed
+-   No negative durations
+-   Completed/deleted detentions not reduced
+-   Offset logic must be atomic
+
+23. Deterministic Calculations Remaining minutes = duration − SUM(offset
+    ledger entries) Totals derived from pending detentions only.

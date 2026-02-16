@@ -1,0 +1,193 @@
+### DetentionDesk Phase 1 — REST Client Tests (token-safe)
+### VS Code: REST Client extension
+
+@baseUrl = http://localhost:5000
+@json = application/json
+
+### ============================================================
+### RESET (DEV ONLY) — drops all collections in current DB
+### Requires header: x-reset-secret === RESET_DB_SECRET in .env
+### Route: POST /owner/dev/reset-db
+### ============================================================
+# @name resetDb
+POST {{baseUrl}}/owner/dev/reset-db
+Content-Type: {{json}}
+x-reset-secret: change_me_reset_secret
+
+{}
+
+
+### ------------------------------------------------------------
+### Health
+### ------------------------------------------------------------
+GET {{baseUrl}}/health
+
+
+### ------------------------------------------------------------
+### Signup School (creates schoolAdmin token) ✅ TENANT TOKEN
+### ------------------------------------------------------------
+# @name signupSchool
+POST {{baseUrl}}/signup/school
+Content-Type: {{json}}
+
+{
+  "schoolName": "Test Academy",
+  "schoolCode": "K9X7Q2",
+  "adminName": "Admin User",
+  "adminEmail": "admin@test.com",
+  "adminPassword": "password123"
+}
+
+@adminToken = {{signupSchool.response.body.data.token}}
+
+
+### ------------------------------------------------------------
+### Login (school-scoped) ✅ TENANT TOKEN
+### ------------------------------------------------------------
+# @name loginSchool
+POST {{baseUrl}}/auth/login
+Content-Type: {{json}}
+
+{
+  "schoolCode": "K9X7Q2",
+  "email": "admin@test.com",
+  "password": "password123"
+}
+
+@adminToken = {{loginSchool.response.body.data.token}}
+
+
+### ------------------------------------------------------------
+### Tenant: Me ✅ uses tenant token
+### ------------------------------------------------------------
+GET {{baseUrl}}/auth/me
+Authorization: Bearer {{adminToken}}
+
+
+### ------------------------------------------------------------
+### Tenant: Get policy ✅ schoolAdmin/teacher only
+### ------------------------------------------------------------
+GET {{baseUrl}}/policy
+Authorization: Bearer {{adminToken}}
+
+
+### ------------------------------------------------------------
+### Tenant: Update policy ✅ schoolAdmin only
+### ------------------------------------------------------------
+PUT {{baseUrl}}/policy
+Content-Type: {{json}}
+Authorization: Bearer {{adminToken}}
+
+{
+  "defaultDetentionMinutes": 30,
+  "rewardOffsetMinutes": 5,
+  "teacherPermissions": {
+    "canCreateIncidents": true,
+    "canCreateRewards": true,
+    "canCompleteDetentions": false,
+    "canDeleteDetentions": false,
+    "canAddNotes": true,
+    "canEditOwnNotes": true,
+    "canViewAllStudents": false
+  }
+}
+
+
+### ------------------------------------------------------------
+### Tenant: List categories ✅
+### ------------------------------------------------------------
+GET {{baseUrl}}/categories
+Authorization: Bearer {{adminToken}}
+
+
+### Tenant: List behaviour categories ✅
+GET {{baseUrl}}/categories?type=behaviour
+Authorization: Bearer {{adminToken}}
+
+
+### ------------------------------------------------------------
+### Tenant: Create category ✅ schoolAdmin only
+### ------------------------------------------------------------
+# @name createCategory
+POST {{baseUrl}}/categories
+Content-Type: {{json}}
+Authorization: Bearer {{adminToken}}
+
+{
+  "type": "behaviour",
+  "name": "Phone Use",
+  "sortOrder": 50
+}
+
+@categoryId = {{createCategory.response.body.data._id}}
+
+
+### Tenant: Update category ✅ schoolAdmin only
+PUT {{baseUrl}}/categories/{{categoryId}}
+Content-Type: {{json}}
+Authorization: Bearer {{adminToken}}
+
+{
+  "name": "Phone Use (Repeated)",
+  "sortOrder": 55,
+  "isActive": true
+}
+
+
+### Tenant: Toggle category ✅ schoolAdmin only
+PATCH {{baseUrl}}/categories/{{categoryId}}/toggle
+Authorization: Bearer {{adminToken}}
+
+
+### ------------------------------------------------------------
+### Owner Bootstrap (one-time) ✅ OWNER TOKEN
+### Requires header x-bootstrap-secret === OWNER_BOOTSTRAP_SECRET in .env
+### ------------------------------------------------------------
+# @name ownerBootstrap
+POST {{baseUrl}}/auth/owner/bootstrap
+Content-Type: {{json}}
+x-bootstrap-secret: change_me_bootstrap_secret
+
+{
+  "name": "Platform Owner",
+  "email": "owner@detentiondesk.com",
+  "password": "password123"
+}
+
+
+### ------------------------------------------------------------
+### Owner Login ✅ OWNER TOKEN
+### ------------------------------------------------------------
+# @name ownerLogin
+POST {{baseUrl}}/auth/owner/login
+Content-Type: {{json}}
+
+{
+  "email": "owner@detentiondesk.com",
+  "password": "password123"
+}
+
+@ownerToken = {{ownerLogin.response.body.data.token}}
+
+
+### Owner: Me ✅
+GET {{baseUrl}}/auth/me
+Authorization: Bearer {{ownerToken}}
+
+
+### Owner: List schools ✅ owner only
+GET {{baseUrl}}/owner/schools
+Authorization: Bearer {{ownerToken}}
+
+
+### ------------------------------------------------------------
+### Expected FAIL tests (to prove isolation)
+### ------------------------------------------------------------
+
+### Owner trying tenant route => should fail (403/401 by design)
+GET {{baseUrl}}/categories
+Authorization: Bearer {{ownerToken}}
+
+### Tenant trying owner route => should fail (403)
+GET {{baseUrl}}/owner/schools
+Authorization: Bearer {{adminToken}}

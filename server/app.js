@@ -13,6 +13,7 @@ const detentionRoutes = require("./routes/detentionRoutes");
 const rewardRoutes = require("./routes/rewardRoutes");
 const offsetRoutes = require("./routes/offsetRoutes");
 const noteRoutes = require("./routes/noteRoutes");
+const dashboardRoutes = require("./routes/dashboardRoutes");
 
 const { errorResponse } = require("./utils/response");
 
@@ -62,6 +63,7 @@ function buildApp() {
   app.use("/api/rewards", rewardRoutes);
   app.use("/api/offsets", offsetRoutes);
   app.use("/api/notes", noteRoutes);
+  app.use("/api/dashboard", dashboardRoutes);
 
   app.use((req, res) => {
     return res.status(404).json(errorResponse("NOT_FOUND", "Route not found"));

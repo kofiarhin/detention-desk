@@ -17,3 +17,31 @@
   margin: 0;
   font-size: 0.9rem;
 }
+
+.auth-page-success {
+  display: grid;
+  gap: 0.8rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  background: #f9fafb;
+  padding: 1rem;
+}
+
+.auth-page-success-label {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #4b5563;
+}
+
+.auth-page-success-code {
+  margin: 0;
+  font-size: 1.5rem;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  color: #111827;
+}
+
+.auth-page-actions {
+  display: grid;
+  gap: 0.6rem;
+}

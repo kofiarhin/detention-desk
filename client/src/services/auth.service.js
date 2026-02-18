@@ -8,11 +8,11 @@ export const loginUser = ({ schoolCode, email, password }) => {
   })
 }
 
-export const registerSchool = ({ schoolName, schoolCode, adminName, adminEmail, adminPassword }) => {
+export const registerSchool = ({ schoolName, adminName, adminEmail, adminPassword }) => {
   return apiRequest({
     path: '/api/signup/school',
     method: 'POST',
-    body: { schoolName, schoolCode, adminName, adminEmail, adminPassword },
+    body: { schoolName, adminName, adminEmail, adminPassword },
   })
 }
 

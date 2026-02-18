@@ -49,7 +49,9 @@ function buildApp() {
   });
 
   app.use("/signup", signupRoutes);
+  app.use("/api/signup", signupRoutes);
   app.use("/auth", authRoutes);
+  app.use("/api/auth", authRoutes);
 
   // tenant-scoped routes (schoolId required; owner forbidden here)
   app.use("/policy", policyRoutes);

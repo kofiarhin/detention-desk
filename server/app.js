@@ -14,6 +14,7 @@ const rewardRoutes = require("./routes/rewardRoutes");
 const offsetRoutes = require("./routes/offsetRoutes");
 const noteRoutes = require("./routes/noteRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
+const studentProfileRoutes = require("./routes/studentProfileRoutes");
 
 const { errorResponse } = require("./utils/response");
 
@@ -57,6 +58,7 @@ function buildApp() {
   // platform owner routes (role=owner; schoolId null)
   app.use("/owner", ownerRoutes);
 
+  app.use("/api/students", studentProfileRoutes);
   app.use("/api/students", studentRoutes);
   app.use("/api/incidents", incidentRoutes);
   app.use("/api/detentions", detentionRoutes);

@@ -7,6 +7,12 @@ const authRoutes = require("./routes/authRoutes");
 const policyRoutes = require("./routes/policyRoutes");
 const categoryRoutes = require("./routes/categoryRoutes");
 const ownerRoutes = require("./routes/ownerRoutes");
+const studentRoutes = require("./routes/studentRoutes");
+const incidentRoutes = require("./routes/incidentRoutes");
+const detentionRoutes = require("./routes/detentionRoutes");
+const rewardRoutes = require("./routes/rewardRoutes");
+const offsetRoutes = require("./routes/offsetRoutes");
+const noteRoutes = require("./routes/noteRoutes");
 
 const { errorResponse } = require("./utils/response");
 
@@ -49,6 +55,13 @@ function buildApp() {
 
   // platform owner routes (role=owner; schoolId null)
   app.use("/owner", ownerRoutes);
+
+  app.use("/api/students", studentRoutes);
+  app.use("/api/incidents", incidentRoutes);
+  app.use("/api/detentions", detentionRoutes);
+  app.use("/api/rewards", rewardRoutes);
+  app.use("/api/offsets", offsetRoutes);
+  app.use("/api/notes", noteRoutes);
 
   app.use((req, res) => {
     return res.status(404).json(errorResponse("NOT_FOUND", "Route not found"));

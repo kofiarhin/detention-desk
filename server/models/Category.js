@@ -22,6 +22,8 @@ const CategorySchema = new mongoose.Schema(
 
     isActive: { type: Boolean, default: true, index: true },
     sortOrder: { type: Number, default: 0 },
+    detentionMinutes: { type: Number, min: 0, default: null },
+    rewardMinutes: { type: Number, min: 0, default: null },
   },
   { timestamps: true },
 );

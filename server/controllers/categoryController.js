@@ -25,7 +25,8 @@ exports.listCategories = async (req, res) => {
 exports.createCategory = async (req, res) => {
   try {
     const schoolId = req.auth.schoolId;
-    const { type, name, sortOrder } = req.body || {};
+    const { type, name, sortOrder, detentionMinutes, rewardMinutes } =
+      req.body || {};
 
     if (!type || !name) {
       return res
@@ -39,6 +40,14 @@ exports.createCategory = async (req, res) => {
       name: String(name).trim(),
       nameNormalized: normalizeCategoryName(name),
       sortOrder: Number.isFinite(sortOrder) ? sortOrder : 0,
+      detentionMinutes:
+        Number.isFinite(detentionMinutes) && detentionMinutes >= 0
+          ? detentionMinutes
+          : null,
+      rewardMinutes:
+        Number.isFinite(rewardMinutes) && rewardMinutes >= 0
+          ? rewardMinutes
+          : null,
       isActive: true,
     });
 
@@ -61,7 +70,13 @@ exports.updateCategory = async (req, res) => {
     const schoolId = req.auth.schoolId;
     const id = req.params.id;
 
-    const allowed = ["name", "sortOrder", "isActive"];
+    const allowed = [
+      "name",
+      "sortOrder",
+      "isActive",
+      "detentionMinutes",
+      "rewardMinutes",
+    ];
     const patch = {};
 
     for (const key of allowed) {

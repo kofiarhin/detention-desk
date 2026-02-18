@@ -1,11 +1,10 @@
-.dashboard-grid {
+.settings-grid {
   display: grid;
   gap: 0.75rem;
-  margin-bottom: 1rem;
 }
 
 @media (min-width: 768px) {
-  .dashboard-grid {
+  .settings-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }

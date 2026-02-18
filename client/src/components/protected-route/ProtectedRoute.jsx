@@ -1,12 +1,22 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
-import { getToken } from '../../lib/auth'
+import { useAuth } from '../../context/AuthContext'
+import Spinner from '../spinner/Spinner'
+import './protected-route.styles.scss'
 
 const ProtectedRoute = () => {
   const location = useLocation()
-  const token = getToken()
+  const { isAuthenticated, isBootstrapping } = useAuth()
 
-  if (!token) {
-    return <Navigate to="/login" replace state={{ from: location }} />
+  if (isBootstrapping) {
+    return (
+      <div className="protected-route-loading">
+        <Spinner />
+      </div>
+    )
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate replace state={{ from: location }} to="/login" />
   }
 
   return <Outlet />

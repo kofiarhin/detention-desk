@@ -1,3 +1,5 @@
-.protected-route {
-  display: block;
+.protected-route-loading {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
 }

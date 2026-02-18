@@ -44,7 +44,14 @@ async function createRewardAndApplyOffsets({ schoolId, studentId, categoryId, no
     if (remainingReward <= 0) break;
 
     const minutesApplied = Math.min(remainingReward, detention.minutesRemaining);
-    detention.minutesRemaining -= minutesApplied;
+    detention.minutesRemaining = Math.max(0, detention.minutesRemaining - minutesApplied);
+
+    if (detention.minutesRemaining === 0) {
+      detention.status = "served";
+      detention.servedAt = awardedAt;
+      detention.servedBy = awardedBy;
+    }
+
     await detention.save();
 
     const offset = await DetentionOffset.create({

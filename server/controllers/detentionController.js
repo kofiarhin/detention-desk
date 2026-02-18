@@ -146,6 +146,8 @@ exports.serveDetention = async (req, res) => {
 
     detention.status = "served";
     detention.minutesRemaining = 0;
+    detention.servedAt = new Date();
+    detention.servedBy = req.auth.userId;
     await detention.save();
     return res.json(successResponse(detention));
   } catch (err) {

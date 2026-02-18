@@ -257,6 +257,11 @@ describe("Phase 2 API", () => {
       .send({ status: "scheduled", scheduledFor: new Date().toISOString() });
     expect(schedule.status).toBe(200);
 
+    await SchoolPolicy.findOneAndUpdate(
+      { schoolId: tenantA.schoolId },
+      { $set: { "teacherPermissions.canCompleteDetentions": true } },
+    );
+
     const serve = await request(app)
       .post(`/api/detentions/${detention._id}/serve`)
       .set("Authorization", `Bearer ${tenantA.teacherToken}`);
@@ -269,7 +274,145 @@ describe("Phase 2 API", () => {
     expect(crossTenant.status).toBe(404);
   });
 
-  test("rewards apply offsets oldest-first with no banking and ledger records", async () => {
+  test("teacher permissions are enforced on create/serve endpoints with admin bypass", async () => {
+    const tenantA = await createSchoolFixture("P");
+
+    await SchoolPolicy.findOneAndUpdate(
+      { schoolId: tenantA.schoolId },
+      {
+        $set: {
+          "teacherPermissions.canCreateIncidents": false,
+          "teacherPermissions.canCreateRewards": false,
+          "teacherPermissions.canAddNotes": false,
+          "teacherPermissions.canCompleteDetentions": false,
+        },
+      },
+    );
+
+    await Category.findByIdAndUpdate(tenantA.behaviour._id, { detentionMinutes: 20 });
+    await Category.findByIdAndUpdate(tenantA.reward._id, { rewardMinutes: 20 });
+
+    const student = await request(app)
+      .post("/api/students")
+      .set("Authorization", `Bearer ${tenantA.adminToken}`)
+      .send({ firstName: "Perm", lastName: "Student", admissionNumber: "P-001", yearGroup: "Year 8", form: "8P" });
+
+    const incidentBody = {
+      studentId: student.body.data._id,
+      categoryId: tenantA.behaviour._id,
+      occurredAt: new Date().toISOString(),
+    };
+
+    const teacherIncidentForbidden = await request(app)
+      .post("/api/incidents")
+      .set("Authorization", `Bearer ${tenantA.teacherToken}`)
+      .send(incidentBody);
+    expect(teacherIncidentForbidden.status).toBe(403);
+
+    const adminIncidentAllowed = await request(app)
+      .post("/api/incidents")
+      .set("Authorization", `Bearer ${tenantA.adminToken}`)
+      .send(incidentBody);
+    expect(adminIncidentAllowed.status).toBe(201);
+
+    await SchoolPolicy.findOneAndUpdate(
+      { schoolId: tenantA.schoolId },
+      { $set: { "teacherPermissions.canCreateIncidents": true } },
+    );
+
+    const teacherIncidentAllowed = await request(app)
+      .post("/api/incidents")
+      .set("Authorization", `Bearer ${tenantA.teacherToken}`)
+      .send({ ...incidentBody, occurredAt: new Date(Date.now() + 1000).toISOString() });
+    expect(teacherIncidentAllowed.status).toBe(201);
+
+    const rewardBody = { studentId: student.body.data._id, categoryId: tenantA.reward._id, notes: "Reward" };
+
+    const teacherRewardForbidden = await request(app)
+      .post("/api/rewards")
+      .set("Authorization", `Bearer ${tenantA.teacherToken}`)
+      .send(rewardBody);
+    expect(teacherRewardForbidden.status).toBe(403);
+
+    const adminRewardAllowed = await request(app)
+      .post("/api/rewards")
+      .set("Authorization", `Bearer ${tenantA.adminToken}`)
+      .send(rewardBody);
+    expect(adminRewardAllowed.status).toBe(201);
+
+    await SchoolPolicy.findOneAndUpdate(
+      { schoolId: tenantA.schoolId },
+      { $set: { "teacherPermissions.canCreateRewards": true } },
+    );
+
+    const teacherRewardAllowed = await request(app)
+      .post("/api/rewards")
+      .set("Authorization", `Bearer ${tenantA.teacherToken}`)
+      .send(rewardBody);
+    expect(teacherRewardAllowed.status).toBe(201);
+
+    const noteBody = { entityType: "student", entityId: student.body.data._id, text: "Permission note" };
+
+    const teacherNoteForbidden = await request(app)
+      .post("/api/notes")
+      .set("Authorization", `Bearer ${tenantA.teacherToken}`)
+      .send(noteBody);
+    expect(teacherNoteForbidden.status).toBe(403);
+
+    const adminNoteAllowed = await request(app)
+      .post("/api/notes")
+      .set("Authorization", `Bearer ${tenantA.adminToken}`)
+      .send(noteBody);
+    expect(adminNoteAllowed.status).toBe(201);
+
+    await SchoolPolicy.findOneAndUpdate(
+      { schoolId: tenantA.schoolId },
+      { $set: { "teacherPermissions.canAddNotes": true } },
+    );
+
+    const teacherNoteAllowed = await request(app)
+      .post("/api/notes")
+      .set("Authorization", `Bearer ${tenantA.teacherToken}`)
+      .send({ ...noteBody, text: "Allowed note" });
+    expect(teacherNoteAllowed.status).toBe(201);
+
+    const serveIncident = await request(app)
+      .post("/api/incidents")
+      .set("Authorization", `Bearer ${tenantA.adminToken}`)
+      .send({ ...incidentBody, occurredAt: new Date(Date.now() + 2000).toISOString() });
+    expect(serveIncident.status).toBe(201);
+
+    const adminDetention = await Detention.findOne({ incidentId: serveIncident.body.data._id }).lean();
+
+    const teacherServeForbidden = await request(app)
+      .post(`/api/detentions/${adminDetention._id}/serve`)
+      .set("Authorization", `Bearer ${tenantA.teacherToken}`);
+    expect(teacherServeForbidden.status).toBe(403);
+
+    const adminServeAllowed = await request(app)
+      .post(`/api/detentions/${adminDetention._id}/serve`)
+      .set("Authorization", `Bearer ${tenantA.adminToken}`);
+    expect(adminServeAllowed.status).toBe(200);
+
+    const teacherServeIncident = await request(app)
+      .post("/api/incidents")
+      .set("Authorization", `Bearer ${tenantA.teacherToken}`)
+      .send({ ...incidentBody, occurredAt: new Date(Date.now() + 3000).toISOString() });
+    expect(teacherServeIncident.status).toBe(201);
+
+    const teacherDetention = await Detention.findOne({ incidentId: teacherServeIncident.body.data._id }).lean();
+    await SchoolPolicy.findOneAndUpdate(
+      { schoolId: tenantA.schoolId },
+      { $set: { "teacherPermissions.canCompleteDetentions": true } },
+    );
+
+    const teacherServeAllowed = await request(app)
+      .post(`/api/detentions/${teacherDetention._id}/serve`)
+      .set("Authorization", `Bearer ${tenantA.teacherToken}`);
+    expect(teacherServeAllowed.status).toBe(200);
+  });
+
+  test("rewards apply offsets oldest-first, auto-serve at zero, and create ledger records", async () => {
     const tenantA = await createSchoolFixture("G");
     await Category.findByIdAndUpdate(tenantA.behaviour._id, { detentionMinutes: 15 });
     await Category.findByIdAndUpdate(tenantA.reward._id, { rewardMinutes: 50 });
@@ -300,6 +443,8 @@ describe("Phase 2 API", () => {
     const detentionsAfter = await Detention.find({ studentId: student.body.data._id }).sort({ createdAt: 1 }).lean();
     expect(detentionsAfter[0].minutesRemaining).toBe(0);
     expect(detentionsAfter[1].minutesRemaining).toBe(0);
+    expect(detentionsAfter[0].status).toBe("served");
+    expect(detentionsAfter[1].status).toBe("served");
 
     const offsets = await DetentionOffset.find({ studentId: student.body.data._id }).sort({ createdAt: 1 }).lean();
     expect(offsets).toHaveLength(2);

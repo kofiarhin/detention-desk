@@ -29,6 +29,13 @@ const DetentionSchema = new mongoose.Schema(
       index: true,
     },
     scheduledFor: { type: Date, default: null },
+    servedAt: { type: Date, default: null },
+    servedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+      index: true,
+    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

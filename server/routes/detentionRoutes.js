@@ -3,6 +3,7 @@ const router = require("express").Router();
 const { requireAuth } = require("../middleware/requireAuth");
 const { requireTenant } = require("../middleware/requireTenant");
 const { requireRole } = require("../middleware/requireRole");
+const { requireTeacherPermission } = require("../middleware/requireTeacherPermission");
 const {
   listDetentions,
   getDetention,
@@ -24,7 +25,7 @@ router.post("/bulk/schedule", requireRole("schoolAdmin"), bulkScheduleDetentions
 
 router.get("/:id", getDetention);
 router.put("/:id", requireRole("schoolAdmin"), updateDetention);
-router.post("/:id/serve", serveDetention);
+router.post("/:id/serve", requireTeacherPermission("canCompleteDetentions"), serveDetention);
 router.post("/:id/void", requireRole("schoolAdmin"), voidDetention);
 
 module.exports = router;

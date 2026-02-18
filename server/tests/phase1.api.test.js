@@ -1,6 +1,8 @@
 const request = require("supertest");
 const { buildApp } = require("../app");
 
+const GENERATED_SCHOOL_CODE_REGEX = /^DK-[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{6}$/;
+
 describe("Phase 1 API", () => {
   const app = buildApp();
 
@@ -13,7 +15,6 @@ describe("Phase 1 API", () => {
   test("POST /signup/school creates school + admin + policy + categories and returns token", async () => {
     const res = await request(app).post("/signup/school").send({
       schoolName: "Test Academy",
-      schoolCode: "K9X7Q2",
       adminName: "Admin User",
       adminEmail: "admin@test.com",
       adminPassword: "password123",
@@ -23,21 +24,27 @@ describe("Phase 1 API", () => {
     expect(res.body.success).toBe(true);
     expect(res.body.data.token).toBeTruthy();
     expect(res.body.data.user.role).toBe("schoolAdmin");
-    expect(res.body.data.school.schoolCode).toBe("K9X7Q2");
+    expect(typeof res.body.data.school.schoolCode).toBe("string");
+    expect(res.body.data.school.schoolCode.length).toBeGreaterThan(0);
+    expect(res.body.data.school.schoolCode).toBe(
+      res.body.data.school.schoolCode.toUpperCase(),
+    );
+    expect(res.body.data.school.schoolCode).toMatch(GENERATED_SCHOOL_CODE_REGEX);
     expect(res.body.data.policy.defaultDetentionMinutes).toBe(30);
   });
 
   test("POST /auth/login returns token for valid schoolCode+email+password", async () => {
-    await request(app).post("/signup/school").send({
+    const signup = await request(app).post("/signup/school").send({
       schoolName: "Test Academy",
-      schoolCode: "K9X7Q2",
       adminName: "Admin User",
       adminEmail: "admin@test.com",
       adminPassword: "password123",
     });
 
+    const generatedSchoolCode = signup.body.data.school.schoolCode;
+
     const res = await request(app).post("/auth/login").send({
-      schoolCode: "k9x7q2", // case-insensitive input
+      schoolCode: generatedSchoolCode.toLowerCase(), // case-insensitive input
       email: "ADMIN@TEST.COM",
       password: "password123",
     });
@@ -48,11 +55,32 @@ describe("Phase 1 API", () => {
     expect(res.body.data.user.role).toBe("schoolAdmin");
   });
 
+  test("School signup generates unique school codes", async () => {
+    const firstSignup = await request(app).post("/signup/school").send({
+      schoolName: "First Academy",
+      adminName: "First Admin",
+      adminEmail: "first-admin@test.com",
+      adminPassword: "password123",
+    });
+
+    const secondSignup = await request(app).post("/signup/school").send({
+      schoolName: "Second Academy",
+      adminName: "Second Admin",
+      adminEmail: "second-admin@test.com",
+      adminPassword: "password123",
+    });
+
+    expect(firstSignup.status).toBe(201);
+    expect(secondSignup.status).toBe(201);
+    expect(firstSignup.body.data.school.schoolCode).not.toBe(
+      secondSignup.body.data.school.schoolCode,
+    );
+  });
+
   test("Tenant routes require tenant token; owner token is forbidden", async () => {
     // create tenant + get admin token
     const signup = await request(app).post("/signup/school").send({
       schoolName: "Test Academy",
-      schoolCode: "K9X7Q2",
       adminName: "Admin User",
       adminEmail: "admin@test.com",
       adminPassword: "password123",
@@ -103,7 +131,6 @@ describe("Phase 1 API", () => {
     // create tenant + get admin token
     const signup = await request(app).post("/signup/school").send({
       schoolName: "Test Academy",
-      schoolCode: "K9X7Q2",
       adminName: "Admin User",
       adminEmail: "admin@test.com",
       adminPassword: "password123",

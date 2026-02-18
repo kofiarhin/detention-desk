@@ -5,7 +5,7 @@ const SchoolSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
 
-    schoolCode: { type: String, required: true, trim: true },
+    schoolCode: { type: String, required: true, trim: true, unique: true, index: true },
     schoolCodeNormalized: {
       type: String,
       required: true,

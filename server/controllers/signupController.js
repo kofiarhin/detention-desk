@@ -3,55 +3,59 @@ const SchoolPolicy = require("../models/SchoolPolicy");
 const User = require("../models/User");
 
 const { successResponse, errorResponse } = require("../utils/response");
-const {
-  normalizeSchoolCode,
-  isValidSchoolCode,
-} = require("../utils/normalize");
 const { signToken } = require("../services/tokenService");
 const { seedDefaultCategories } = require("../services/seedService");
+const { generateSchoolCode } = require("../utils/generateSchoolCode");
+
+const MAX_SCHOOL_CODE_ATTEMPTS = 15;
+
+const isDuplicateKeyError = (error) => {
+  return Boolean(error && error.code === 11000);
+};
 
 exports.signupSchool = async (req, res) => {
   try {
-    const { schoolName, schoolCode, adminName, adminEmail, adminPassword } =
-      req.body || {};
+    const { schoolName, adminName, adminEmail, adminPassword } = req.body || {};
 
-    if (
-      !schoolName ||
-      !schoolCode ||
-      !adminName ||
-      !adminEmail ||
-      !adminPassword
-    ) {
+    if (!schoolName || !adminName || !adminEmail || !adminPassword) {
       return res
         .status(400)
         .json(errorResponse("VALIDATION_ERROR", "Missing required fields"));
     }
 
-    if (!isValidSchoolCode(schoolCode)) {
+    let school = null;
+
+    for (
+      let attempt = 0;
+      attempt < MAX_SCHOOL_CODE_ATTEMPTS && !school;
+      attempt += 1
+    ) {
+      const generatedSchoolCode = generateSchoolCode();
+
+      try {
+        school = await School.create({
+          name: String(schoolName).trim(),
+          schoolCode: generatedSchoolCode,
+        });
+      } catch (error) {
+        if (isDuplicateKeyError(error)) {
+          continue;
+        }
+
+        throw error;
+      }
+    }
+
+    if (!school) {
       return res
-        .status(400)
+        .status(500)
         .json(
           errorResponse(
-            "INVALID_SCHOOL_CODE",
-            "School code must be 6–8 chars A–Z/0–9 (no O/0/I/1/L)",
+            "SCHOOL_CODE_GENERATION_FAILED",
+            "Could not generate a unique school code",
           ),
         );
     }
-
-    const codeNorm = normalizeSchoolCode(schoolCode);
-
-    const exists = await School.findOne({
-      schoolCodeNormalized: codeNorm,
-    }).lean();
-    if (exists)
-      return res
-        .status(409)
-        .json(errorResponse("SCHOOL_CODE_TAKEN", "School code already in use"));
-
-    const school = await School.create({
-      name: String(schoolName).trim(),
-      schoolCode: codeNorm,
-    });
 
     const policy = await SchoolPolicy.create({
       schoolId: school._id,

@@ -1,0 +1,103 @@
+# DetentionDesk — Progress Checklist (✅ Done) + Next Steps (➡️)
+
+## ✅ Completed (so far)
+
+### Phase 1 — Auth + Tenant Foundation
+- ✅ Health endpoint verified
+- ✅ School signup creates: school + admin + policy + categories
+- ✅ Tenant login returns JWT token
+- ✅ Tenant routes require tenant token (owner/platform token blocked)
+- ✅ Owner route requires owner token
+- ✅ Test suite coverage for Phase 1 passes
+
+### Phase 2 — Core Engine
+- ✅ Students: CRUD + search + pagination + uniqueness + tenant isolation (owner blocked)
+- ✅ Incidents: create/list/update/delete with rules + detention engine integration
+- ✅ Detentions: valid transitions + tenant isolation
+- ✅ Rewards: apply offsets oldest-first, no banking; ledger recorded
+- ✅ Notes: validation + author/admin delete + tenant isolation
+- ✅ Phase 2 API tests passing
+
+### Phase 3 — Product/Operations Backend
+- ✅ Admin Dashboard aggregation endpoint + metrics + widgets + pagination
+- ✅ Student Profile aggregation API (profile + timeline) with flags + tenant isolation
+- ✅ Admin detention operations:
+  - ✅ Detention filtering + pagination (status/studentId/date range/etc.)
+  - ✅ Bulk serve
+  - ✅ Bulk void
+  - ✅ Bulk schedule (future-date validation)
+  - ✅ Security: admin-only, owner blocked, teacher blocked (bulk ops)
+- ✅ All server test suites passing (Phase 1–3 + utilities)
+
+### Phase 4 — Frontend Bootstrap (In progress, working locally)
+- ✅ Minimal Vite + React client added (PR #6)
+- ✅ JWT login page working locally (/login)
+- ✅ Session/token persistence + protected routing in place
+- ✅ Admin dashboard page wired to backend aggregation API
+- ✅ Dev proxy configured so client can call server without CORS pain
+
+---
+
+## ➡️ What to do next (highest ROI, in order)
+
+### 1) Merge & Stabilize Frontend PR (#6)
+- ☐ Pull PR branch locally, run client + server, confirm:
+  - ☐ Login works (admin + teacher accounts)
+  - ☐ Admin can access /dashboard and data loads
+  - ☐ Teacher is blocked from /dashboard
+  - ☐ Logout clears session and redirects to /login
+  - ☐ No console errors, no CORS/proxy issues
+- ☐ Merge PR to main
+- ☐ Update README with “Run locally” steps for full stack
+
+### 2) Build Students List Page (Admin + Teacher)
+- ☐ Route: /students
+- ☐ Paginated table + search
+- ☐ Click row → /students/:id (Student Profile)
+- ☐ Empty + loading + error states
+- ☐ Tenant-safe calls only (token-based)
+
+### 3) Build Student Profile UI (Operational Core)
+- ☐ Use existing APIs:
+  - ☐ GET /api/students/:id/profile
+  - ☐ GET /api/students/:id/timeline
+- ☐ Layout:
+  - ☐ Header summary (pending minutes, totals, flags)
+  - ☐ Tabs: Incidents / Detentions / Rewards / Offsets
+  - ☐ Independent pagination per tab
+- ☐ Add quick actions (phase 3.5):
+  - ☐ Log incident
+  - ☐ Log reward
+
+### 4) Detentions Ops UI (Admin Console)
+- ☐ Route: /detentions
+- ☐ Filters: status/student/date-range/remaining-minutes
+- ☐ Multi-select + bulk actions:
+  - ☐ Serve
+  - ☐ Void
+  - ☐ Schedule (date picker)
+- ☐ Success summaries + partial success handling
+
+### 5) UX Hardening + Release Readiness (after flows exist)
+- ☐ Toasts/alerts for API outcomes
+- ☐ Better form validation + inline errors
+- ☐ Basic audit visibility (who did what, when) surfaced in UI
+- ☐ Deployment plan:
+  - ☐ Server → Render (or similar)
+  - ☐ Client → Vercel
+  - ☐ Env vars documented and locked down
+
+---
+
+## Quick “Run Locally” (target)
+- Server:
+  - npm install
+  - npm run server
+- Client:
+  - cd client
+  - npm install
+  - npm run dev
+
+---
+
+Generated: 2026-02-18

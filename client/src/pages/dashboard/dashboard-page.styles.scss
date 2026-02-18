@@ -1,0 +1,34 @@
+.dashboard-page {
+  margin: 0 auto;
+  max-width: 1080px;
+  padding: 16px;
+}
+
+.dashboard-header {
+  margin-bottom: 16px;
+}
+
+.dashboard-title {
+  color: #121826;
+  font-size: 28px;
+  margin: 0;
+}
+
+.dashboard-kpis {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  margin-bottom: 16px;
+}
+
+.dashboard-widgets {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.dashboard-state {
+  color: #121826;
+  margin: 0;
+  padding: 20px;
+}

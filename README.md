@@ -1,70 +1,52 @@
 # DetentionDesk
 
-DetentionDesk is a multi-tenant MERN application designed for schools to manage student behaviour, rewards, and automated detentions with strict tenant isolation and full auditability.
+DetentionDesk is a multi-tenant MERN application for schools to manage behaviour incidents, rewards, and detention workflows with strict tenant isolation.
 
-**Core Value Proposition**  
-Track behaviour. Enforce accountability. Reward improvement.
+## Tech Stack
 
----
+- Backend: Node.js + Express + MongoDB (Mongoose)
+- Frontend: React (Vite) + React Router + SCSS
 
-## Product Overview
+## Local Development
 
-DetentionDesk enables schools to manage:
+### 1) Install dependencies
 
-- Student behaviour incidents  
-- Student rewards  
-- Automated detentions  
-- Detention lifecycle & resolution  
-- Teacher/admin notes & commentary  
-- Parent visibility & accountability  
+```bash
+npm install
+npm install --prefix client
+```
 
-Each school operates inside a fully isolated tenant environment.
+### 2) Configure environment variables
 
----
+Create a root `.env` with your backend settings (Mongo URI, JWT secret, etc).
 
-## Architecture
+### 3) Run full stack in development
 
-### Stack
+```bash
+npm run dev
+```
 
-- **Frontend:** React (Vite), SCSS, React Router, React Query  
-- **Backend:** Node.js, Express, MongoDB (Mongoose)  
-- **Deployment:** Vercel + Render/Heroku + MongoDB Atlas  
+- Backend runs on `http://localhost:5000`
+- Frontend runs on `http://localhost:4000`
+- Vite proxy forwards `/api/*` requests to the backend in dev
 
----
+### 4) Run backend only
 
-### Multi-Tenant Model
+```bash
+npm run server
+```
 
-**Tenant = School**
+### 5) Run frontend only
 
-Isolation rules:
+```bash
+npm run client
+```
 
-- Every tenant-owned record includes `schoolId`
-- JWT contains `userId`, `schoolId`, `role`
-- `schoolId` is never accepted from the client
-- All queries are scoped by `schoolId`
-- All lookups by ID use `{ _id, schoolId }`
+## Frontend Auth Flow
 
-This prevents cross-school data leakage.
-
----
-
-## Identity & Authentication
-
-Users authenticate with:
-
-- School Code  
-- Email  
-- Password  
-
-Resolution flow:
-
-1. Resolve school via `schoolCode`
-2. Resolve user via `{ email + schoolId }`
-3. Issue JWT:
-
-```json
-{
-  "userId": "...",
-  "schoolId": "...",
-  "role": "schoolAdmin | teacher | parent | owner"
-}
+- Login page: `/login`
+- Sends credentials (`schoolCode`, `email`, `password`) to `/api/auth/login`
+- Stores JWT token and user payload in `localStorage`
+- Protected routes redirect to `/login` if token is missing
+- Dashboard route (`/dashboard`) is admin-only (teacher is blocked)
+- Any API 401 clears session and redirects to `/login`

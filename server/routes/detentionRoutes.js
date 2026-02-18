@@ -9,11 +9,19 @@ const {
   updateDetention,
   serveDetention,
   voidDetention,
+  bulkServeDetentions,
+  bulkVoidDetentions,
+  bulkScheduleDetentions,
 } = require("../controllers/detentionController");
 
 router.use(requireAuth, requireTenant, requireRole("schoolAdmin", "teacher"));
 
 router.get("/", listDetentions);
+
+router.post("/bulk/serve", requireRole("schoolAdmin"), bulkServeDetentions);
+router.post("/bulk/void", requireRole("schoolAdmin"), bulkVoidDetentions);
+router.post("/bulk/schedule", requireRole("schoolAdmin"), bulkScheduleDetentions);
+
 router.get("/:id", getDetention);
 router.put("/:id", requireRole("schoolAdmin"), updateDetention);
 router.post("/:id/serve", serveDetention);

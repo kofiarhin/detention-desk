@@ -40,6 +40,7 @@ const DetentionSchema = new mongoose.Schema(
 );
 
 DetentionSchema.index({ schoolId: 1, studentId: 1, status: 1 });
+DetentionSchema.index({ schoolId: 1, createdAt: -1 });
 DetentionSchema.index({ schoolId: 1, scheduledFor: 1 });
 
 module.exports = mongoose.model("Detention", DetentionSchema);

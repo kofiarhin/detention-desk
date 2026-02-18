@@ -1,0 +1,109 @@
+DetentionDesk — Project Checkpoint
+
+This document captures the current implementation state of DetentionDesk
+so development can resume cleanly at any time.
+
+✅ Phase 1 — Multi-Tenant Foundation (Completed)
+
+Core Infrastructure - Express server bootstrapped with centralized
+buildApp() - Global error handler & 404 fallback - Environment-driven
+configuration via .env - Helmet security middleware enabled -
+Configurable CORS policy
+
+Multi-Tenant Architecture (Critical) - Tenant model established → Tenant
+= School - All tenant-owned data includes schoolId - JWT payload
+standardized with userId, schoolId, role - Server never trusts
+client-supplied schoolId - Query scoping strategy defined - Owner users
+modeled with schoolId: null
+
+Authentication System - Login via schoolCode, email, password - School
+resolution logic implemented - Email normalization enforced - JWT
+issuing logic implemented - Token verification helper available
+
+Roles & Authorization - requireAuth middleware operational - requireRole
+middleware operational - requireTenant middleware operational - Tenant
+routes reject owner tokens - Owner routes reject tenant users -
+Role-based access correctly restricted
+
+School Bootstrap Flow POST /signup/school creates: - School - School
+Admin user - Default SchoolPolicy - Default Categories - JWT token
+
+Policy System (Tenant Scoped) - SchoolPolicy model defined - Policy
+fetch & update routes functional - Policy isolation enforced by schoolId
+
+Category System (Tenant Scoped) - Category model defined - Behaviour vs
+Reward types supported - Tenant isolation enforced - CRUD controller
+scaffolded
+
+Owner / Platform Layer Owner routes implemented: GET /owner/schools POST
+/owner/dev/reset-db
+
+Behaviour: - Requires owner JWT - Correct role enforcement
+
+Development Utilities POST /owner/dev/reset-db - Requires owner token -
+Requires reset secret header - Drops collections safely (dev only)
+
+Response Contract Standardization Success → { success: true, data }
+Error → { success: false, error }
+
+Normalization Utilities - normalizeSchoolCode - normalizeEmail -
+normalizeId
+
+Server Testing Harness - Jest - Supertest - MongoDB Memory Server
+
+Coverage includes: - Auth flows - Signup flows - Token service -
+Response utilities - Normalization logic - Tenant vs Owner guard
+behaviour
+
+Known State Observations - Controllers intentionally thin/scaffolded -
+Business logic minimal (foundation phase)
+
+🚧 Phase 2 — Domain Systems (Next Priority)
+
+1.  Student Model
+
+-   Student schema
+-   Tenant isolation
+-   CRUD routes
+
+2.  Behaviour Incident System
+
+-   Incident model
+-   Teacher-scoped creation
+-   Policy-driven detention trigger
+
+3.  Detention Engine
+
+-   Detention model
+-   Status lifecycle
+-   Duration logic from policy
+
+4.  Reward System
+
+-   Reward model
+-   Category linkage
+
+5.  Reward Offset Logic (High Importance)
+
+-   No reward banking
+-   Only reduce pending detentions
+-   Prevent negative durations
+
+6.  Offset Ledger (Audit Safety) DetentionOffset:
+
+-   rewardId
+-   detentionId
+-   minutesApplied
+
+7.  Notes / Commentary System
+
+-   Polymorphic notes
+-   Author tracking
+
+Safe Resume Point Primary Focus → Student Model + Incident System
+
+Stability Summary ✔ Multi-tenant enforcement working ✔ Auth & roles
+stable ✔ Owner vs tenant separation correct ✔ Dev reset utility
+functional ✔ Test harness reliable
+
+End of Checkpoint

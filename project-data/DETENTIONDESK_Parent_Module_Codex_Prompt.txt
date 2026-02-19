@@ -1,0 +1,114 @@
+CODEX IMPLEMENTATION PROMPT — DETENTIONDESK Parent Module (LOCKED)
+
+You are working inside an existing MERN monorepo for DetentionDesk
+(Node/Express/Mongoose backend, React frontend). Implement the Parent
+module exactly per the requirements below. Do not introduce placeholders
+or TODOs. Do not weaken tenant isolation. Do not return temp passwords
+in API responses. Do not log secrets.
+
+NON-NEGOTIABLE INVARIANTS
+
+1)  Tenant isolation: schoolId is derived ONLY from JWT
+    (req.user.schoolId) and is NEVER accepted from client input.
+2)  Owner isolation: owner tokens are blocked from all tenant routes.
+3)  Parent scope: parents can only access students they’re linked to via
+    ParentStudentLink where status === “active” and schoolId ===
+    req.user.schoolId.
+4)  Parent is read-only: parents cannot mutate students or discipline
+    records.
+5)  mustChangePassword enforcement: if req.user.role === “parent” and
+    req.user.mustChangePassword === true, allow only:
+    -   GET /api/auth/me
+    -   POST /api/auth/change-password All other requests must be
+        blocked with: { “message”: “Password change required”, “code”:
+        “PASSWORD_RESET_REQUIRED”, “details”: {} }
+
+GOAL
+
+Implement parent creation (admin-driven), parent-student linking, parent
+read-only endpoints, link revocation, strict must-change-password
+gating, and Jest/Supertest coverage proving invariants.
+
+WORK PLAN
+
+A)  Data Models
+
+1)  Extend User model:
+
+-   role includes “parent”
+-   status: active | inactive
+-   mustChangePassword: boolean (default false)
+
+2)  Create ParentStudentLink model with:
+
+-   schoolId (required, indexed)
+-   parentId (required, indexed)
+-   studentId (required, indexed)
+-   relationshipType (optional)
+-   status (active | revoked)
+-   createdBy
+-   verifiedAt (optional)
+-   timestamps: true
+
+Indexes required: - { schoolId: 1, parentId: 1, status: 1 } - {
+schoolId: 1, studentId: 1, status: 1 } - unique { schoolId: 1, parentId:
+1, studentId: 1 }
+
+B)  Admin API: Create Parent + Link
+
+Route: POST /api/admin/parents Access: schoolAdmin only
+
+Flow: 1. Derive schoolId from JWT 2. Validate student exists within
+tenant 3. Normalize email 4. If parent user does not exist: - Generate
+strong temporary password (16+ chars) - Hash with bcrypt - Create parent
+user (role=parent, schoolId, active, mustChangePassword=true) 5. Create
+ParentStudentLink (active) 6. Send welcome email containing login URL
+and temp password 7. API response must NOT include temp password
+
+C)  Admin API: Revoke Parent Link
+
+Route: PATCH /api/admin/parent-links/:id/revoke Access: schoolAdmin only
+Behavior: set status=“revoked”
+
+D)  Parent Read-Only APIs
+
+1)  GET /api/parent/students
+    -   Return linked students only (limited safe fields)
+2)  GET /api/parent/students/:id
+    -   Validate active link
+    -   Return limited safe fields
+3)  GET /api/parent/students/:id/timeline
+    -   Validate active link
+    -   Return incidents, rewards, detentions
+    -   Notes only if visibleToParent === true
+    -   Order newest first
+
+E)  Parent Mutation Must Be Impossible
+
+-   Ensure parent cannot mutate any discipline or student data
+-   Any attempt must return 403
+
+F)  mustChangePassword Middleware Enforcement
+
+If role === parent and mustChangePassword === true: Allow only: -
+/api/auth/me - /api/auth/change-password All others return
+PASSWORD_RESET_REQUIRED error
+
+Tests Required (Jest + Supertest)
+
+1)  Admin creates parent (mustChangePassword true, no temp password
+    returned)
+2)  Parent blocked from routes until password changed
+3)  Parent can access linked student
+4)  Parent cannot access unlinked student
+5)  Revoked link removes access immediately
+6)  Cross-tenant access blocked
+7)  Owner token blocked from parent routes
+
+OUTPUT REQUIREMENTS
+
+-   Modify existing files
+-   Provide changed files list
+-   Provide full updated file contents
+-   No placeholders
+-   Tests must pass

@@ -50,6 +50,7 @@ async function createSchoolFixture(prefix) {
     schoolId: adminUser.schoolId,
     adminUser,
     adminToken,
+    teacher,
     teacherToken: signToken({ userId: teacher._id, schoolId: teacher.schoolId, role: teacher.role }),
     behaviourCategoryId: behaviour._id,
     rewardCategoryId: reward._id,
@@ -65,6 +66,7 @@ async function seedStudent(school, suffix) {
     yearGroup: "Year 8",
     form: "8A",
     createdBy: school.adminUser._id,
+    assignedTeacherId: school.teacher._id,
   });
 }
 

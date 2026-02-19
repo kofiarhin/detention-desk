@@ -8,6 +8,7 @@ const {
   bulkVoidDetentions,
   bulkScheduleDetentions,
 } = require("../services/detentionOperationsService");
+const { loadStudentForTeacherOrFail, applyStudentScope } = require("../services/studentAccessService");
 
 const VALID_TRANSITIONS = {
   pending: ["scheduled", "served", "voided"],
@@ -74,7 +75,7 @@ exports.listDetentions = async (req, res) => {
         .json(errorResponse("VALIDATION_ERROR", "hasRemainingMinutes must be true or false"));
     }
 
-    const filter = { schoolId: req.auth.schoolId };
+    const filter = applyStudentScope(req);
     if (studentId) filter.studentId = studentId;
     if (status) filter.status = status;
     if (from || to) {
@@ -103,7 +104,7 @@ exports.listDetentions = async (req, res) => {
 
 exports.getDetention = async (req, res) => {
   try {
-    const item = await Detention.findOne({ _id: req.params.id, schoolId: req.auth.schoolId }).lean();
+    const item = await Detention.findOne(applyStudentScope(req, { _id: req.params.id })).lean();
     if (!item) return res.status(404).json(errorResponse("NOT_FOUND", "Detention not found"));
     return res.json(successResponse(item));
   } catch (err) {
@@ -113,7 +114,7 @@ exports.getDetention = async (req, res) => {
 
 exports.updateDetention = async (req, res) => {
   try {
-    const detention = await Detention.findOne({ _id: req.params.id, schoolId: req.auth.schoolId });
+    const detention = await Detention.findOne(applyStudentScope(req, { _id: req.params.id }));
     if (!detention) return res.status(404).json(errorResponse("NOT_FOUND", "Detention not found"));
 
     const nextStatus = req.body?.status;
@@ -138,8 +139,13 @@ exports.updateDetention = async (req, res) => {
 
 exports.serveDetention = async (req, res) => {
   try {
-    const detention = await Detention.findOne({ _id: req.params.id, schoolId: req.auth.schoolId });
+    const detention = await Detention.findOne(applyStudentScope(req, { _id: req.params.id }));
     if (!detention) return res.status(404).json(errorResponse("NOT_FOUND", "Detention not found"));
+    if (req.auth.role === "teacher") {
+      const student = await loadStudentForTeacherOrFail(req, detention.studentId);
+      if (!student) return res.status(403).json(errorResponse("FORBIDDEN", "Student not assigned to teacher"));
+    }
+
     if (!["pending", "scheduled"].includes(detention.status)) {
       return res.status(400).json(errorResponse("INVALID_TRANSITION", "Detention cannot be served"));
     }
@@ -157,7 +163,7 @@ exports.serveDetention = async (req, res) => {
 
 exports.voidDetention = async (req, res) => {
   try {
-    const detention = await Detention.findOne({ _id: req.params.id, schoolId: req.auth.schoolId });
+    const detention = await Detention.findOne(applyStudentScope(req, { _id: req.params.id }));
     if (!detention) return res.status(404).json(errorResponse("NOT_FOUND", "Detention not found"));
     if (!["pending", "scheduled"].includes(detention.status)) {
       return res.status(400).json(errorResponse("INVALID_TRANSITION", "Detention cannot be voided"));

@@ -8,6 +8,12 @@ const StudentSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    assignedTeacherId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
     firstName: { type: String, required: true, trim: true },
     lastName: { type: String, required: true, trim: true },
     admissionNumber: { type: String, required: true, trim: true },
@@ -17,14 +23,28 @@ const StudentSchema = new mongoose.Schema(
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
+      required: true,
+    },
+    updatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
       default: null,
     },
   },
   { timestamps: true },
 );
 
+StudentSchema.pre("validate", function (next) {
+  if (!this.assignedTeacherId && this.createdBy) {
+    this.assignedTeacherId = this.createdBy;
+  }
+  next();
+});
+
 StudentSchema.index({ schoolId: 1, admissionNumber: 1 }, { unique: true });
 StudentSchema.index({ schoolId: 1, lastName: 1 });
 StudentSchema.index({ schoolId: 1, yearGroup: 1 });
+StudentSchema.index({ schoolId: 1, assignedTeacherId: 1 });
+StudentSchema.index({ schoolId: 1, createdAt: -1 });
 
 module.exports = mongoose.model("Student", StudentSchema);

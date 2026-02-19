@@ -21,7 +21,7 @@ async function requireAuth(req, res, next) {
 
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
-    const { userId, schoolId, role } = payload || {};
+    const { userId, role } = payload || {};
 
     if (!userId || !role) {
       return res
@@ -29,36 +29,32 @@ async function requireAuth(req, res, next) {
         .json(errorResponse("INVALID_TOKEN", "Invalid token payload"));
     }
 
+    const user = await User.findById(userId).lean();
+    if (!user) {
+      return res
+        .status(401)
+        .json(errorResponse("INVALID_TOKEN", "Invalid token"));
+    }
+
+    if (user.status !== "active") {
+      return res
+        .status(403)
+        .json(errorResponse("ACCOUNT_INACTIVE", "Account is inactive"));
+    }
+
     req.auth = {
-      userId: String(userId),
-      schoolId: schoolId ? String(schoolId) : null,
-      role: String(role),
+      userId: String(user._id),
+      schoolId: user.schoolId ? String(user.schoolId) : null,
+      role: user.role,
     };
 
     req.user = {
-      id: String(userId),
-      schoolId: schoolId ? String(schoolId) : null,
-      role: String(role),
-      status: "active",
-      mustChangePassword: false,
+      id: String(user._id),
+      schoolId: user.schoolId ? String(user.schoolId) : null,
+      role: user.role,
+      status: user.status,
+      mustChangePassword: Boolean(user.mustChangePassword),
     };
-
-    if (req.user.role === "parent") {
-      const user = await User.findById(userId).lean();
-      if (!user) {
-        return res
-          .status(401)
-          .json(errorResponse("INVALID_TOKEN", "Invalid token"));
-      }
-
-      req.user = {
-        id: String(user._id),
-        schoolId: user.schoolId ? String(user.schoolId) : null,
-        role: user.role,
-        status: user.status,
-        mustChangePassword: Boolean(user.mustChangePassword),
-      };
-    }
 
     if (
       req.user.role === "parent" &&

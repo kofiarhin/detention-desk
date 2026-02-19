@@ -67,6 +67,7 @@ describe("Phase 2 API", () => {
         admissionNumber: "A-001",
         yearGroup: "Year 7",
         form: "7A",
+        assignedTeacherId: String(tenantA.teacher._id),
       });
 
     expect(s1.status).toBe(201);
@@ -80,6 +81,7 @@ describe("Phase 2 API", () => {
         admissionNumber: "A-001",
         yearGroup: "Year 7",
         form: "7B",
+        assignedTeacherId: String(tenantA.teacher._id),
       });
     expect(dupSameTenant.status).toBe(409);
 
@@ -92,6 +94,7 @@ describe("Phase 2 API", () => {
         admissionNumber: "A-001",
         yearGroup: "Year 7",
         form: "7A",
+        assignedTeacherId: String(tenantB.teacher._id),
       });
     expect(sameAdmOtherTenant.status).toBe(201);
 
@@ -155,6 +158,7 @@ describe("Phase 2 API", () => {
         admissionNumber: "S-001",
         yearGroup: "Year 8",
         form: "8A",
+        assignedTeacherId: String(tenantA.teacher._id),
       });
 
     const badRef = await request(app)
@@ -213,7 +217,7 @@ describe("Phase 2 API", () => {
       .put(`/api/incidents/${incident.body.data._id}`)
       .set("Authorization", `Bearer ${otherTeacherToken}`)
       .send({ notes: "Nope" });
-    expect(teacherForbidden.status).toBe(403);
+    expect(teacherForbidden.status).toBe(404);
 
     const crossTenant = await request(app)
       .get(`/api/incidents/${incident.body.data._id}`)
@@ -236,7 +240,7 @@ describe("Phase 2 API", () => {
     const student = await request(app)
       .post("/api/students")
       .set("Authorization", `Bearer ${tenantA.adminToken}`)
-      .send({ firstName: "Tim", lastName: "Town", admissionNumber: "T-001", yearGroup: "Year 9", form: "9A" });
+      .send({ firstName: "Tim", lastName: "Town", admissionNumber: "T-001", yearGroup: "Year 9", form: "9A", assignedTeacherId: String(tenantA.teacher._id) });
 
     const incident = await request(app)
       .post("/api/incidents")
@@ -295,7 +299,7 @@ describe("Phase 2 API", () => {
     const student = await request(app)
       .post("/api/students")
       .set("Authorization", `Bearer ${tenantA.adminToken}`)
-      .send({ firstName: "Perm", lastName: "Student", admissionNumber: "P-001", yearGroup: "Year 8", form: "8P" });
+      .send({ firstName: "Perm", lastName: "Student", admissionNumber: "P-001", yearGroup: "Year 8", form: "8P", assignedTeacherId: String(tenantA.teacher._id) });
 
     const incidentBody = {
       studentId: student.body.data._id,
@@ -421,7 +425,7 @@ describe("Phase 2 API", () => {
     const student = await request(app)
       .post("/api/students")
       .set("Authorization", `Bearer ${tenantA.adminToken}`)
-      .send({ firstName: "Rae", lastName: "Ray", admissionNumber: "R-001", yearGroup: "Year 7", form: "7A" });
+      .send({ firstName: "Rae", lastName: "Ray", admissionNumber: "R-001", yearGroup: "Year 7", form: "7A", assignedTeacherId: String(tenantA.teacher._id) });
 
     for (let i = 0; i < 2; i += 1) {
       await request(app)
@@ -465,7 +469,7 @@ describe("Phase 2 API", () => {
     const student = await request(app)
       .post("/api/students")
       .set("Authorization", `Bearer ${tenantA.adminToken}`)
-      .send({ firstName: "Nia", lastName: "North", admissionNumber: "N-001", yearGroup: "Year 10", form: "10A" });
+      .send({ firstName: "Nia", lastName: "North", admissionNumber: "N-001", yearGroup: "Year 10", form: "10A", assignedTeacherId: String(tenantA.teacher._id) });
 
     const invalid = await request(app)
       .post("/api/notes")
@@ -498,7 +502,7 @@ describe("Phase 2 API", () => {
     const forbiddenDelete = await request(app)
       .delete(`/api/notes/${note.body.data._id}`)
       .set("Authorization", `Bearer ${otherTeacherToken}`);
-    expect(forbiddenDelete.status).toBe(403);
+    expect(forbiddenDelete.status).toBe(404);
 
     const adminDelete = await request(app)
       .delete(`/api/notes/${note.body.data._id}`)

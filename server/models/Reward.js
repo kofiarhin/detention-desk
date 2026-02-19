@@ -14,6 +14,12 @@ const RewardSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    assignedTeacherId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
     categoryId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Category",
@@ -32,6 +38,14 @@ const RewardSchema = new mongoose.Schema(
   },
   { timestamps: true },
 );
+
+
+RewardSchema.pre("validate", function (next) {
+  if (!this.assignedTeacherId && this.awardedBy) {
+    this.assignedTeacherId = this.awardedBy;
+  }
+  next();
+});
 
 RewardSchema.index({ schoolId: 1, studentId: 1, awardedAt: -1 });
 

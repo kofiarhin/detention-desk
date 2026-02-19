@@ -1,22 +1,29 @@
 const Note = require("../models/Note");
-const Student = require("../models/Student");
 const Incident = require("../models/Incident");
 const Detention = require("../models/Detention");
 const Reward = require("../models/Reward");
 const { successResponse, errorResponse } = require("../utils/response");
 const { parseListQuery, buildMeta } = require("../services/queryService");
+const { loadStudentForRole, loadStudentForTeacherOrFail, applyStudentScope } = require("../services/studentAccessService");
 
-async function entityExists({ schoolId, entityType, entityId }) {
+async function resolveStudentForEntity({ schoolId, entityType, entityId }) {
+  if (entityType === "student") {
+    return { studentId: entityId };
+  }
+
   const map = {
-    student: Student,
     incident: Incident,
     detention: Detention,
     reward: Reward,
   };
+
   const Model = map[entityType];
-  if (!Model) return false;
-  const doc = await Model.findOne({ _id: entityId, schoolId }).lean();
-  return Boolean(doc);
+  if (!Model) return null;
+
+  const doc = await Model.findOne({ _id: entityId, schoolId }, { studentId: 1 }).lean();
+  if (!doc) return null;
+
+  return { studentId: doc.studentId };
 }
 
 exports.createNote = async (req, res) => {
@@ -28,11 +35,21 @@ exports.createNote = async (req, res) => {
     if (!entityId) return res.status(400).json(errorResponse("VALIDATION_ERROR", "entityId is required"));
     if (!text) return res.status(400).json(errorResponse("VALIDATION_ERROR", "text is required"));
 
-    const exists = await entityExists({ schoolId, entityType, entityId });
-    if (!exists) return res.status(400).json(errorResponse("VALIDATION_ERROR", "Entity not found in tenant"));
+    const resolution = await resolveStudentForEntity({ schoolId, entityType, entityId });
+    if (!resolution) return res.status(400).json(errorResponse("VALIDATION_ERROR", "Entity not found in tenant"));
+
+    const student = req.auth.role === "teacher"
+      ? await loadStudentForTeacherOrFail(req, resolution.studentId)
+      : await loadStudentForRole(req, resolution.studentId);
+
+    if (!student) {
+      return res.status(req.auth.role === "teacher" ? 403 : 400).json(errorResponse(req.auth.role === "teacher" ? "FORBIDDEN" : "VALIDATION_ERROR", req.auth.role === "teacher" ? "Student not assigned to teacher" : "Invalid studentId"));
+    }
 
     const note = await Note.create({
       schoolId,
+      studentId: student._id,
+      assignedTeacherId: student.assignedTeacherId,
       entityType,
       entityId,
       text,
@@ -49,7 +66,7 @@ exports.listNotes = async (req, res) => {
   try {
     const { page, limit, skip, sort } = parseListQuery(req.query || {});
     const { entityType, entityId } = req.query || {};
-    const filter = { schoolId: req.auth.schoolId };
+    const filter = applyStudentScope(req);
     if (entityType) filter.entityType = entityType;
     if (entityId) filter.entityId = entityId;
 
@@ -66,7 +83,8 @@ exports.listNotes = async (req, res) => {
 
 exports.deleteNote = async (req, res) => {
   try {
-    const note = await Note.findOne({ _id: req.params.id, schoolId: req.auth.schoolId });
+    const filter = applyStudentScope(req, { _id: req.params.id });
+    const note = await Note.findOne(filter);
     if (!note) return res.status(404).json(errorResponse("NOT_FOUND", "Note not found"));
 
     const isAdmin = req.auth.role === "schoolAdmin";

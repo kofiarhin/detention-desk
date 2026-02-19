@@ -1,22 +1,16 @@
 const Incident = require("../models/Incident");
-const Student = require("../models/Student");
 const Category = require("../models/Category");
 const { successResponse, errorResponse } = require("../utils/response");
 const { parseListQuery, buildMeta } = require("../services/queryService");
 const {
+  loadStudentForRole,
+  loadStudentForTeacherOrFail,
+  applyStudentScope,
+} = require("../services/studentAccessService");
+const {
   getIncidentDetentionMinutes,
   createDetentionForIncident,
 } = require("../services/detentionService");
-
-async function validateIncidentRefs({ schoolId, studentId, categoryId }) {
-  const [student, category] = await Promise.all([
-    Student.findOne({ _id: studentId, schoolId }).lean(),
-    Category.findOne({ _id: categoryId, schoolId, type: "behaviour" }).lean(),
-  ]);
-  if (!student) return { ok: false, message: "Invalid studentId" };
-  if (!category) return { ok: false, message: "Invalid behaviour categoryId" };
-  return { ok: true };
-}
 
 exports.createIncident = async (req, res) => {
   try {
@@ -27,12 +21,21 @@ exports.createIncident = async (req, res) => {
     if (!categoryId) return res.status(400).json(errorResponse("VALIDATION_ERROR", "categoryId is required"));
     if (!occurredAt) return res.status(400).json(errorResponse("VALIDATION_ERROR", "occurredAt is required"));
 
-    const refs = await validateIncidentRefs({ schoolId, studentId, categoryId });
-    if (!refs.ok) return res.status(400).json(errorResponse("VALIDATION_ERROR", refs.message));
+    const student = req.auth.role === "teacher"
+      ? await loadStudentForTeacherOrFail(req, studentId)
+      : await loadStudentForRole(req, studentId);
+
+    if (!student) {
+      return res.status(req.auth.role === "teacher" ? 403 : 400).json(errorResponse(req.auth.role === "teacher" ? "FORBIDDEN" : "VALIDATION_ERROR", req.auth.role === "teacher" ? "Student not assigned to teacher" : "Invalid studentId"));
+    }
+
+    const category = await Category.findOne({ _id: categoryId, schoolId, type: "behaviour" }).lean();
+    if (!category) return res.status(400).json(errorResponse("VALIDATION_ERROR", "Invalid behaviour categoryId"));
 
     const incident = await Incident.create({
       schoolId,
       studentId,
+      assignedTeacherId: student.assignedTeacherId,
       categoryId,
       notes: notes || "",
       occurredAt,
@@ -45,6 +48,7 @@ exports.createIncident = async (req, res) => {
       await createDetentionForIncident({
         schoolId,
         studentId,
+        assignedTeacherId: student.assignedTeacherId,
         incidentId: incident._id,
         createdBy: req.auth.userId,
         minutes: detentionMinutes,
@@ -60,10 +64,9 @@ exports.createIncident = async (req, res) => {
 
 exports.listIncidents = async (req, res) => {
   try {
-    const schoolId = req.auth.schoolId;
     const { page, limit, skip, sort } = parseListQuery(req.query || {});
     const { studentId, categoryId, status, from, to } = req.query || {};
-    const filter = { schoolId };
+    const filter = applyStudentScope(req);
     if (studentId) filter.studentId = studentId;
     if (categoryId) filter.categoryId = categoryId;
     if (status) filter.status = status;
@@ -87,7 +90,8 @@ exports.listIncidents = async (req, res) => {
 
 exports.getIncident = async (req, res) => {
   try {
-    const item = await Incident.findOne({ _id: req.params.id, schoolId: req.auth.schoolId }).lean();
+    const filter = applyStudentScope(req, { _id: req.params.id });
+    const item = await Incident.findOne(filter).lean();
     if (!item) return res.status(404).json(errorResponse("NOT_FOUND", "Incident not found"));
     return res.json(successResponse(item));
   } catch (err) {
@@ -98,11 +102,13 @@ exports.getIncident = async (req, res) => {
 exports.updateIncident = async (req, res) => {
   try {
     const schoolId = req.auth.schoolId;
-    const existing = await Incident.findOne({ _id: req.params.id, schoolId });
+    const filter = applyStudentScope(req, { _id: req.params.id, schoolId });
+    const existing = await Incident.findOne(filter);
     if (!existing) return res.status(404).json(errorResponse("NOT_FOUND", "Incident not found"));
 
-    if (req.auth.role === "teacher" && String(existing.reportedBy) !== String(req.auth.userId)) {
-      return res.status(403).json(errorResponse("FORBIDDEN", "Teachers can only edit their own incidents"));
+    if (req.auth.role === "teacher") {
+      const student = await loadStudentForTeacherOrFail(req, existing.studentId);
+      if (!student) return res.status(403).json(errorResponse("FORBIDDEN", "Student not assigned to teacher"));
     }
 
     const allowed = ["notes", "occurredAt", "severity", "status"];
@@ -120,12 +126,13 @@ exports.updateIncident = async (req, res) => {
 
 exports.deleteIncident = async (req, res) => {
   try {
-    const schoolId = req.auth.schoolId;
-    const existing = await Incident.findOne({ _id: req.params.id, schoolId });
+    const filter = applyStudentScope(req, { _id: req.params.id, schoolId: req.auth.schoolId });
+    const existing = await Incident.findOne(filter);
     if (!existing) return res.status(404).json(errorResponse("NOT_FOUND", "Incident not found"));
 
-    if (req.auth.role === "teacher" && String(existing.reportedBy) !== String(req.auth.userId)) {
-      return res.status(403).json(errorResponse("FORBIDDEN", "Teachers can only void their own incidents"));
+    if (req.auth.role === "teacher") {
+      const student = await loadStudentForTeacherOrFail(req, existing.studentId);
+      if (!student) return res.status(403).json(errorResponse("FORBIDDEN", "Student not assigned to teacher"));
     }
 
     existing.status = "voided";

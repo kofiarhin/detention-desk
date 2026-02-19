@@ -58,6 +58,7 @@ async function createSchoolFixture(prefix) {
     schoolId: adminUser.schoolId,
     adminUser,
     adminToken,
+    teacher,
     teacherToken: signToken({ userId: teacher._id, schoolId: teacher.schoolId, role: teacher.role }),
     parentToken: signToken({ userId: parent._id, schoolId: parent.schoolId, role: parent.role }),
     behaviourCategoryId: behaviour._id,
@@ -74,6 +75,7 @@ async function seedStudent(school, suffix) {
     yearGroup: "Year 8",
     form: "8A",
     createdBy: school.adminUser._id,
+    assignedTeacherId: school.teacher._id,
   });
 }
 
@@ -420,7 +422,7 @@ describe("Phase 3 Student Profile Aggregation API", () => {
     const ownerRes = await request(app)
       .get(`/api/students/${student._id}/profile`)
       .set("Authorization", `Bearer ${ownerToken}`);
-    expect(ownerRes.status).toBe(403);
+    expect(ownerRes.status).toBe(401);
 
     const parentRes = await request(app)
       .get(`/api/students/${student._id}/timeline`)

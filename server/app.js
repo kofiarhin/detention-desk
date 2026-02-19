@@ -15,7 +15,7 @@ const offsetRoutes = require("./routes/offsetRoutes");
 const noteRoutes = require("./routes/noteRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const studentProfileRoutes = require("./routes/studentProfileRoutes");
-const adminParentRoutes = require("./routes/adminParentRoutes");
+const adminRoutes = require("./routes/adminRoutes");
 const parentRoutes = require("./routes/parentRoutes");
 
 const { errorResponse } = require("./utils/response");
@@ -61,7 +61,7 @@ function buildApp() {
   // platform owner routes (role=owner; schoolId null)
   app.use("/owner", ownerRoutes);
 
-  app.use("/api/admin", adminParentRoutes);
+  app.use("/api/admin", adminRoutes);
   app.use("/api/parent", parentRoutes);
 
   app.use("/api/students", studentProfileRoutes);

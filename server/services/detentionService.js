@@ -15,11 +15,12 @@ async function getIncidentDetentionMinutes({ schoolId, categoryId }) {
   return policy.defaultDetentionMinutes;
 }
 
-async function createDetentionForIncident({ schoolId, studentId, incidentId, createdBy, minutes }) {
+async function createDetentionForIncident({ schoolId, studentId, assignedTeacherId, incidentId, createdBy, minutes }) {
   return Detention.create({
     schoolId,
     studentId,
     incidentId,
+    assignedTeacherId,
     minutesAssigned: minutes,
     minutesRemaining: minutes,
     status: "pending",

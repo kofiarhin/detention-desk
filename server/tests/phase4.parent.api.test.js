@@ -24,11 +24,22 @@ async function createSchoolFixture(prefix = "P") {
   const adminUser = await User.findOne({ email: `${prefix.toLowerCase()}-admin@test.com` });
   const behaviour = await Category.findOne({ schoolId: adminUser.schoolId, type: "behaviour" });
 
+  const teacherHash = await User.hashPassword("password123");
+  const teacher = await User.create({
+    schoolId: adminUser.schoolId,
+    name: `${prefix} Teacher`,
+    email: `${prefix.toLowerCase()}-teacher@test.com`,
+    passwordHash: teacherHash,
+    role: "teacher",
+    status: "active",
+  });
+
   return {
     schoolId: String(adminUser.schoolId),
     adminToken: signup.body.data.token,
     adminUser,
     behaviour,
+    teacher,
   };
 }
 
@@ -45,6 +56,7 @@ describe("Phase 4 Parent API", () => {
         admissionNumber: "P1-001",
         yearGroup: "Year 9",
         form: "9A",
+        assignedTeacherId: String(tenant.teacher._id),
       });
 
     expect(student.status).toBe(201);
@@ -210,6 +222,7 @@ describe("Phase 4 Parent API", () => {
         admissionNumber: "P2A-001",
         yearGroup: "Year 8",
         form: "8A",
+        assignedTeacherId: String(tenantA.teacher._id),
       });
     expect(studentA.status).toBe(201);
 
@@ -243,6 +256,7 @@ describe("Phase 4 Parent API", () => {
         admissionNumber: "P2B-001",
         yearGroup: "Year 8",
         form: "8B",
+        assignedTeacherId: String(tenantB.teacher._id),
       });
     expect(tenantBStudent.status).toBe(201);
 

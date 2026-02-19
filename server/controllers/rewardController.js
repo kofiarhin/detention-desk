@@ -1,10 +1,14 @@
 const Reward = require("../models/Reward");
-const Student = require("../models/Student");
 const Category = require("../models/Category");
 const DetentionOffset = require("../models/DetentionOffset");
 const { successResponse, errorResponse } = require("../utils/response");
 const { parseListQuery, buildMeta } = require("../services/queryService");
 const { getRewardMinutes, createRewardAndApplyOffsets } = require("../services/rewardService");
+const {
+  loadStudentForRole,
+  loadStudentForTeacherOrFail,
+  applyStudentScope,
+} = require("../services/studentAccessService");
 
 exports.createReward = async (req, res) => {
   try {
@@ -14,12 +18,14 @@ exports.createReward = async (req, res) => {
     if (!studentId) return res.status(400).json(errorResponse("VALIDATION_ERROR", "studentId is required"));
     if (!categoryId) return res.status(400).json(errorResponse("VALIDATION_ERROR", "categoryId is required"));
 
-    const [student, category] = await Promise.all([
-      Student.findOne({ _id: studentId, schoolId }).lean(),
-      Category.findOne({ _id: categoryId, schoolId, type: "reward" }).lean(),
-    ]);
+    const student = req.auth.role === "teacher"
+      ? await loadStudentForTeacherOrFail(req, studentId)
+      : await loadStudentForRole(req, studentId);
+    if (!student) {
+      return res.status(req.auth.role === "teacher" ? 403 : 400).json(errorResponse(req.auth.role === "teacher" ? "FORBIDDEN" : "VALIDATION_ERROR", req.auth.role === "teacher" ? "Student not assigned to teacher" : "Invalid studentId"));
+    }
 
-    if (!student) return res.status(400).json(errorResponse("VALIDATION_ERROR", "Invalid studentId"));
+    const category = await Category.findOne({ _id: categoryId, schoolId, type: "reward" }).lean();
     if (!category) return res.status(400).json(errorResponse("VALIDATION_ERROR", "Invalid reward categoryId"));
 
     const minutesAwarded = await getRewardMinutes({ schoolId, categoryId });
@@ -28,6 +34,7 @@ exports.createReward = async (req, res) => {
     const result = await createRewardAndApplyOffsets({
       schoolId,
       studentId,
+      assignedTeacherId: student.assignedTeacherId,
       categoryId,
       notes: notes || "",
       awardedBy: req.auth.userId,
@@ -46,7 +53,7 @@ exports.listRewards = async (req, res) => {
   try {
     const { page, limit, skip, sort } = parseListQuery(req.query || {});
     const { studentId, from, to } = req.query || {};
-    const filter = { schoolId: req.auth.schoolId };
+    const filter = applyStudentScope(req);
     if (studentId) filter.studentId = studentId;
     if (from || to) {
       filter.awardedAt = {};
@@ -67,7 +74,8 @@ exports.listRewards = async (req, res) => {
 
 exports.getReward = async (req, res) => {
   try {
-    const reward = await Reward.findOne({ _id: req.params.id, schoolId: req.auth.schoolId }).lean();
+    const filter = applyStudentScope(req, { _id: req.params.id });
+    const reward = await Reward.findOne(filter).lean();
     if (!reward) return res.status(404).json(errorResponse("NOT_FOUND", "Reward not found"));
     return res.json(successResponse(reward));
   } catch (err) {

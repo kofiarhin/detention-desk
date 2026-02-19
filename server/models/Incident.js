@@ -14,6 +14,12 @@ const IncidentSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    assignedTeacherId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
     categoryId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Category",
@@ -33,6 +39,14 @@ const IncidentSchema = new mongoose.Schema(
   },
   { timestamps: true },
 );
+
+
+IncidentSchema.pre("validate", function (next) {
+  if (!this.assignedTeacherId && this.reportedBy) {
+    this.assignedTeacherId = this.reportedBy;
+  }
+  next();
+});
 
 IncidentSchema.index({ schoolId: 1, studentId: 1, occurredAt: -1 });
 IncidentSchema.index({ schoolId: 1, categoryId: 1 });

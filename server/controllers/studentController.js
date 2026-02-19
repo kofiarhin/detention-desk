@@ -1,6 +1,8 @@
 const Student = require("../models/Student");
+const User = require("../models/User");
 const { successResponse, errorResponse } = require("../utils/response");
 const { parseListQuery, buildMeta } = require("../services/queryService");
+const { loadStudentForRole, applyStudentScope } = require("../services/studentAccessService");
 
 exports.createStudent = async (req, res) => {
   try {
@@ -13,8 +15,29 @@ exports.createStudent = async (req, res) => {
     if (!yearGroup) return res.status(400).json(errorResponse("VALIDATION_ERROR", "yearGroup is required"));
     if (!form) return res.status(400).json(errorResponse("VALIDATION_ERROR", "form is required"));
 
+    let assignedTeacherId = req.auth.userId;
+
+    if (req.auth.role === "schoolAdmin") {
+      if (!req.body?.assignedTeacherId) {
+        return res.status(400).json(errorResponse("VALIDATION_ERROR", "assignedTeacherId is required"));
+      }
+
+      const teacher = await User.findOne({
+        _id: req.body.assignedTeacherId,
+        schoolId,
+        role: "teacher",
+      }).lean();
+
+      if (!teacher) {
+        return res.status(400).json(errorResponse("VALIDATION_ERROR", "assignedTeacherId must be an active tenant teacher"));
+      }
+
+      assignedTeacherId = teacher._id;
+    }
+
     const student = await Student.create({
       schoolId,
+      assignedTeacherId,
       firstName: String(firstName).trim(),
       lastName: String(lastName).trim(),
       admissionNumber: String(admissionNumber).trim(),
@@ -22,6 +45,7 @@ exports.createStudent = async (req, res) => {
       form: String(form).trim(),
       status: status === "inactive" ? "inactive" : "active",
       createdBy: req.auth.userId,
+      updatedBy: req.auth.userId,
     });
 
     return res.status(201).json(successResponse(student));
@@ -36,11 +60,10 @@ exports.createStudent = async (req, res) => {
 
 exports.listStudents = async (req, res) => {
   try {
-    const schoolId = req.auth.schoolId;
     const { page, limit, skip, sort } = parseListQuery(req.query || {});
     const { q, yearGroup, form, status } = req.query || {};
 
-    const filter = { schoolId };
+    const filter = applyStudentScope(req);
     if (yearGroup) filter.yearGroup = String(yearGroup);
     if (form) filter.form = String(form);
     if (status) filter.status = String(status);
@@ -68,7 +91,7 @@ exports.listStudents = async (req, res) => {
 
 exports.getStudent = async (req, res) => {
   try {
-    const student = await Student.findOne({ _id: req.params.id, schoolId: req.auth.schoolId }).lean();
+    const student = await loadStudentForRole(req, req.params.id);
     if (!student) return res.status(404).json(errorResponse("NOT_FOUND", "Student not found"));
     return res.json(successResponse(student));
   } catch (err) {
@@ -78,14 +101,21 @@ exports.getStudent = async (req, res) => {
 
 exports.updateStudent = async (req, res) => {
   try {
-    const allowed = ["firstName", "lastName", "admissionNumber", "yearGroup", "form", "status"];
+    const teacherAllowed = ["firstName", "lastName", "yearGroup", "form", "status"];
+    const adminAllowed = ["firstName", "lastName", "admissionNumber", "yearGroup", "form", "status"];
+    const allowed = req.auth.role === "teacher" ? teacherAllowed : adminAllowed;
+
     const patch = {};
     for (const key of allowed) {
       if (Object.prototype.hasOwnProperty.call(req.body || {}, key)) patch[key] = req.body[key];
     }
 
+    patch.updatedBy = req.auth.userId;
+
+    const filter = applyStudentScope(req, { _id: req.params.id });
+
     const updated = await Student.findOneAndUpdate(
-      { _id: req.params.id, schoolId: req.auth.schoolId },
+      filter,
       { $set: patch },
       { new: true },
     ).lean();
@@ -103,9 +133,10 @@ exports.updateStudent = async (req, res) => {
 
 exports.deleteStudent = async (req, res) => {
   try {
+    const filter = applyStudentScope(req, { _id: req.params.id });
     const updated = await Student.findOneAndUpdate(
-      { _id: req.params.id, schoolId: req.auth.schoolId },
-      { $set: { status: "inactive" } },
+      filter,
+      { $set: { status: "inactive", updatedBy: req.auth.userId } },
       { new: true },
     ).lean();
 

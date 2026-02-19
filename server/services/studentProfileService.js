@@ -33,9 +33,12 @@ async function fetchTimelineList({ model, filter, sort, page, limit }) {
   return { items, page, limit, total };
 }
 
-async function getTenantStudentOrNull({ schoolId, studentId }) {
+async function getTenantStudentOrNull({ schoolId, studentId, assignedTeacherId = null }) {
+  const filter = { _id: studentId, schoolId };
+  if (assignedTeacherId) filter.assignedTeacherId = assignedTeacherId;
+
   return Student.findOne(
-    { _id: studentId, schoolId },
+    filter,
     {
       firstName: 1,
       lastName: 1,
@@ -49,13 +52,14 @@ async function getTenantStudentOrNull({ schoolId, studentId }) {
   ).lean();
 }
 
-async function getStudentProfileData({ schoolId, studentId }) {
+async function getStudentProfileData({ schoolId, studentId, role, userId }) {
   const tenantSchoolId = toObjectId(schoolId);
   const tenantStudentId = toObjectId(studentId);
 
   const student = await getTenantStudentOrNull({
     schoolId: tenantSchoolId,
     studentId: tenantStudentId,
+    assignedTeacherId: role === "teacher" ? toObjectId(userId) : null,
   });
 
   if (!student) return null;
@@ -158,13 +162,14 @@ async function getStudentProfileData({ schoolId, studentId }) {
   };
 }
 
-async function getStudentTimelineData({ schoolId, studentId, query = {} }) {
+async function getStudentTimelineData({ schoolId, studentId, role, userId, query = {} }) {
   const tenantSchoolId = toObjectId(schoolId);
   const tenantStudentId = toObjectId(studentId);
 
   const student = await getTenantStudentOrNull({
     schoolId: tenantSchoolId,
     studentId: tenantStudentId,
+    assignedTeacherId: role === "teacher" ? toObjectId(userId) : null,
   });
 
   if (!student) return null;

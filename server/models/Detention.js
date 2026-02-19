@@ -14,6 +14,12 @@ const DetentionSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    assignedTeacherId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
     incidentId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Incident",
@@ -45,6 +51,14 @@ const DetentionSchema = new mongoose.Schema(
   },
   { timestamps: true },
 );
+
+
+DetentionSchema.pre("validate", function (next) {
+  if (!this.assignedTeacherId && this.createdBy) {
+    this.assignedTeacherId = this.createdBy;
+  }
+  next();
+});
 
 DetentionSchema.index({ schoolId: 1, studentId: 1, status: 1 });
 DetentionSchema.index({ schoolId: 1, createdAt: -1 });

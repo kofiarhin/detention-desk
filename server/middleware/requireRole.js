@@ -12,4 +12,7 @@ function requireRole(...allowedRoles) {
   };
 }
 
-module.exports = { requireRole };
+const requireSchoolAdmin = requireRole("schoolAdmin");
+const requireTeacher = requireRole("teacher");
+
+module.exports = { requireRole, requireSchoolAdmin, requireTeacher };

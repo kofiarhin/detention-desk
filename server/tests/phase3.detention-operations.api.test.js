@@ -137,7 +137,9 @@ describe("Phase 3 Slice 3: detention operations", () => {
     expect(paged.body.meta.limit).toBe(100);
     expect(paged.body.data).toHaveLength(3);
 
-    const ownerToken = signToken({ userId: schoolA.adminUser._id, schoolId: null, role: "owner" });
+    const ownerHash = await User.hashPassword("password123");
+    const owner = await User.create({ schoolId: null, name: "Owner", email: "ops-owner@test.com", passwordHash: ownerHash, role: "owner" });
+    const ownerToken = signToken({ userId: owner._id, schoolId: null, role: "owner" });
     const ownerRes = await request(app)
       .get("/api/detentions")
       .set("Authorization", `Bearer ${ownerToken}`);
@@ -243,7 +245,9 @@ describe("Phase 3 Slice 3: detention operations", () => {
 
     const detention = await createDetention({ school, studentId: school.student._id, status: "pending" });
 
-    const ownerToken = signToken({ userId: school.adminUser._id, schoolId: null, role: "owner" });
+    const ownerHash = await User.hashPassword("password123");
+    const owner = await User.create({ schoolId: null, name: "OwnerSec", email: "owner-sec@test.com", passwordHash: ownerHash, role: "owner" });
+    const ownerToken = signToken({ userId: owner._id, schoolId: null, role: "owner" });
 
     const ownerRes = await request(app)
       .post("/api/detentions/bulk/serve")

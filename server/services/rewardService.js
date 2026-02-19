@@ -17,11 +17,12 @@ async function getRewardMinutes({ schoolId, categoryId }) {
   return policy.rewardOffsetMinutes;
 }
 
-async function createRewardAndApplyOffsets({ schoolId, studentId, categoryId, notes, awardedBy, awardedAt, minutesAwarded }) {
+async function createRewardAndApplyOffsets({ schoolId, studentId, assignedTeacherId, categoryId, notes, awardedBy, awardedAt, minutesAwarded }) {
   const reward = await Reward.create({
     schoolId,
     studentId,
     categoryId,
+    assignedTeacherId,
     notes,
     awardedBy,
     awardedAt,

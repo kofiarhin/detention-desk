@@ -60,6 +60,8 @@ exports.login = async (req, res) => {
           name: user.name,
           email: user.email,
           role: user.role,
+          mustChangePassword: Boolean(user.mustChangePassword),
+          status: user.status,
         },
         school: {
           id: String(school._id),
@@ -196,6 +198,8 @@ exports.me = async (req, res) => {
             name: user.name,
             email: user.email,
             role: user.role,
+            mustChangePassword: Boolean(user.mustChangePassword),
+            status: user.status,
           },
         }),
       );
@@ -217,6 +221,8 @@ exports.me = async (req, res) => {
           name: user.name,
           email: user.email,
           role: user.role,
+          mustChangePassword: Boolean(user.mustChangePassword),
+          status: user.status,
         },
         school: school
           ? {
@@ -241,5 +247,47 @@ exports.me = async (req, res) => {
     return res
       .status(500)
       .json(errorResponse("SERVER_ERROR", "Could not load session"));
+  }
+};
+
+exports.changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body || {};
+    if (!currentPassword || !newPassword) {
+      return res
+        .status(400)
+        .json(errorResponse("VALIDATION_ERROR", "Missing required fields"));
+    }
+
+    if (String(newPassword).length < 8) {
+      return res
+        .status(400)
+        .json(errorResponse("VALIDATION_ERROR", "Password too short"));
+    }
+
+    const user = await User.findById(req.auth.userId);
+    if (!user) {
+      return res
+        .status(401)
+        .json(errorResponse("AUTH_REQUIRED", "Invalid session"));
+    }
+
+    const ok = await user.verifyPassword(currentPassword);
+    if (!ok) {
+      return res
+        .status(401)
+        .json(errorResponse("INVALID_LOGIN", "Current password is incorrect"));
+    }
+
+    user.passwordHash = await User.hashPassword(newPassword);
+    user.mustChangePassword = false;
+    await user.save();
+
+    return res.json(successResponse({ changed: true }));
+  } catch (err) {
+    console.error("[changePassword] error:", err);
+    return res
+      .status(500)
+      .json(errorResponse("SERVER_ERROR", "Could not change password"));
   }
 };

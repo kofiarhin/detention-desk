@@ -15,6 +15,8 @@ const offsetRoutes = require("./routes/offsetRoutes");
 const noteRoutes = require("./routes/noteRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const studentProfileRoutes = require("./routes/studentProfileRoutes");
+const adminParentRoutes = require("./routes/adminParentRoutes");
+const parentRoutes = require("./routes/parentRoutes");
 
 const { errorResponse } = require("./utils/response");
 
@@ -31,7 +33,6 @@ function buildApp() {
   app.use(
     cors({
       origin: corsOrigins.length ? corsOrigins : "*",
-      credentials: true,
       methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
       allowedHeaders: [
         "Content-Type",
@@ -59,6 +60,9 @@ function buildApp() {
 
   // platform owner routes (role=owner; schoolId null)
   app.use("/owner", ownerRoutes);
+
+  app.use("/api/admin", adminParentRoutes);
+  app.use("/api/parent", parentRoutes);
 
   app.use("/api/students", studentProfileRoutes);
   app.use("/api/students", studentRoutes);

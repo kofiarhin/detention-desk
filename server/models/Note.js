@@ -16,6 +16,7 @@ const NoteSchema = new mongoose.Schema(
     },
     entityId: { type: mongoose.Schema.Types.ObjectId, required: true, index: true },
     text: { type: String, required: true, trim: true },
+    visibleToParent: { type: Boolean, default: false, index: true },
     authorId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

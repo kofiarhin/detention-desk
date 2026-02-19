@@ -1,0 +1,156 @@
+DETENTIONDESK — FULL PROJECT BRIEF (v2 LOCKED)
+
+1.  PROJECT OVERVIEW
+
+DetentionDesk is a secure, multi-tenant school discipline management
+platform.
+
+It enables schools to: - Log incidents - Calculate detentions
+deterministically - Apply reward offsets - Generate dashboards -
+Maintain immutable discipline timelines - Provide controlled parent
+visibility
+
+The system enforces: - Strict tenant isolation - Deterministic
+discipline logic - Role-based access control - Audit integrity
+
+2.  CORE ARCHITECTURE
+
+Backend: - Node.js - Express - MongoDB (Mongoose) - JWT authentication -
+Deterministic discipline engine - Jest + Supertest
+
+Frontend: - Vite + React - JWT session persistence - Role-aware UI
+rendering - Protected routes
+
+Deployment: - Backend → Render / Heroku - Frontend → Vercel - Database →
+MongoDB Atlas
+
+3.  TENANT ISOLATION (CRITICAL INVARIANT)
+
+-   schoolId is always derived from JWT.
+-   schoolId is NEVER accepted from client input.
+-   All reads and writes must include schoolId constraints.
+-   Owner tokens are blocked from tenant routes.
+
+Violation of this rule invalidates the architecture.
+
+4.  ROLES
+
+4.1 owner Platform-level only. - Cannot access tenant routes. - Manages
+platform-level settings.
+
+4.2 schoolAdmin (Tenant-Scoped) Full authority within their school
+tenant.
+
+May: - Create/manage teachers - Create/manage students - Reassign
+students - Perform bulk detention operations - Override discipline
+operations - Access dashboards
+
+May NOT: - Create owner accounts - Escalate privileges - Modify tenant
+isolation
+
+4.3 teacher (Tenant + Assignment Scoped)
+
+Core rule: Teacher may access records only where: student.schoolId ===
+req.user.schoolId AND student.assignedTeacherId === req.user._id
+
+Enforced server-side.
+
+May: - View assigned students - Edit limited student fields - Log
+incidents - Create rewards - Add notes - Issue detentions (via
+discipline engine) - Serve/schedule/void single detentions
+
+May NOT: - Access unassigned students - Perform bulk detention
+operations - Modify assignment - Access dashboards (unless explicitly
+allowed)
+
+4.4 parent (Tenant + Linked-Student Scoped)
+
+Parents are read-only, child-scoped users.
+
+Core rule: Parent may access only: student.schoolId ===
+req.user.schoolId AND student._id ∈ ParentStudentLink where parentId =
+req.user._id AND status = active
+
+Parents may: - View linked student profile (limited fields) - View
+discipline timeline - View detention status
+
+Parents may NOT: - Mutate discipline records - Edit students - Access
+dashboards - Access other students - Modify assignments
+
+5.  STUDENT OWNERSHIP MODEL
+
+Student must include: - schoolId - assignedTeacherId (required) -
+createdBy - updatedBy
+
+Creation rules: - Admin-created student must include
+assignedTeacherId. - Teacher-created student auto-assigns to teacher.
+
+Reassignment: - Admin may update assignedTeacherId. - Historical
+discipline records remain unchanged.
+
+6.  DISCIPLINE RECORD REQUIREMENTS
+
+All discipline records must include: - schoolId - studentId -
+createdBy - assignedTeacherId (copied from student at write-time)
+
+7.  WRITE-TIME ENFORCEMENT (MANDATORY)
+
+For teacher operations: 1. Derive schoolId from JWT 2. Load student by
+{_id, schoolId} 3. Validate assignment match 4. Reject on mismatch 5.
+Copy assignment into discipline record
+
+Applies to: - Incidents - Rewards - Notes - Detentions - Detention
+transitions
+
+8.  PARENT-STUDENT LINKING MODEL
+
+Collection: ParentStudentLink
+
+Required fields: - schoolId - parentId - studentId - relationshipType
+(optional) - status (active / revoked) - createdBy - createdAt -
+verifiedAt (optional)
+
+Rules: - schoolId derived from JWT - Revoking link removes access
+immediately
+
+9.  PARENT ACCOUNT CREATION FLOW (ADMIN-DRIVEN)
+
+Admin creates parent by submitting: - parent email - studentId -
+relationshipType (optional)
+
+System: 1. Generates strong temporary password (server-side only) 2.
+Hashes password with bcrypt 3. Creates User: - role = parent - schoolId
+from JWT - status = active - mustChangePassword = true 4. Creates
+ParentStudentLink (active) 5. Sends welcome email with: - login URL -
+temporary password - instruction to change password
+
+10. PARENT LOGIN POLICY
+
+Parents authenticate using: - Email - Password
+
+If mustChangePassword === true: Parent may access only: - /auth/me -
+/auth/change-password
+
+All other endpoints return: { “message”: “Password change required”,
+“code”: “PASSWORD_RESET_REQUIRED” }
+
+11. SECURITY REQUIREMENTS
+
+-   No client-provided schoolId
+-   No privilege escalation
+-   No cross-tenant access
+-   Rate limiting on auth + discipline endpoints
+-   CORS restricted to known origins
+-   Environment variable validation at startup
+-   MongoDB indexes for multi-tenant performance
+-   Structured logging
+-   Health + readiness endpoints
+-   CI pipeline with branch protection
+
+12. PRODUCTION BLOCKERS
+
+Before production: - Assignment-based teacher scoping enforced -
+ParentStudentLink implemented - Parent read-only endpoints enforced -
+mustChangePassword enforced - Tests proving: - Teacher scope - Parent
+scope - Admin reassignment effects - Owner route blocking - Tenant
+isolation

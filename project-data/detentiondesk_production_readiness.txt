@@ -1,0 +1,92 @@
+DETENTIONDESK — PRODUCTION READINESS OUTLINE
+
+CURRENT ALIGNMENT - Multi-tenant isolation enforced via JWT-derived
+schoolId - Roles defined (owner, schoolAdmin, teacher) - Owner blocked
+from tenant routes - Partial role restrictions already present
+
+CRITICAL GAPS AGAINST LOCKED BRIEF
+
+1.  Student Assignment Missing
+
+-   Student model lacks assignedTeacherId
+-   Teacher-scoped access cannot be enforced
+
+2.  Student Access Not Teacher-Scoped
+
+-   Student queries only filter by schoolId
+-   Teachers can currently access entire tenant
+
+3.  Discipline Records Not Assignment-Aware
+
+-   Incidents, rewards, notes, detentions do not validate teacher
+    ownership via student assignment
+
+4.  No Teacher Management Module
+
+-   No admin routes for creating, listing, deactivating teachers
+
+5.  Dashboard Visibility Not Role-Aware
+
+-   Teachers may receive whole-tenant metrics
+-   Needs scoping or restriction
+
+6.  No Student Reassignment Flow
+
+-   Missing admin-only reassignment mechanics
+
+REQUIRED BACKEND ALIGNMENT
+
+Phase A — Permission Model Enforcement (Mandatory)
+
+-   Add assignedTeacherId to Student
+-   Enforce teacher-scoped queries for students
+-   Validate student assignment on ALL teacher writes
+-   Copy assignedTeacherId into discipline records
+-   Implement admin teacher management (create, deactivate, reactivate)
+-   Implement admin student reassignment endpoint
+-   Prevent teacher modification of assignment & tenant identifiers
+
+REQUIRED FRONTEND ALIGNMENT
+
+Phase B — Operational UX Completion (Mandatory)
+
+Admin UI: - Teacher management screens - Student assignment /
+reassignment workflows
+
+Teacher UI: - Assigned-students-only views - Student profile discipline
+actions
+
+General: - Role-based navigation enforcement - Token expiry & session
+handling improvements
+
+PRODUCTION HARDENING
+
+Phase C — Security & Stability (Mandatory)
+
+-   Lock CORS to explicit origins
+-   Add rate limiting & brute-force protection
+-   Centralize request validation
+-   Disable or secure bootstrap owner logic
+-   Enforce inactive account restrictions
+-   Add structured logging & monitoring
+-   Validate MongoDB indexes
+-   Harden environment variable handling
+-   Strengthen health checks (include DB validation)
+-   CI pipeline with protected main branch
+
+PRE-LAUNCH SAFEGUARDS (Recommended)
+
+-   Backup & restore strategy
+-   Load testing for aggregations
+-   Demo tenant seeding
+-   Minimal API documentation
+
+PRIMARY BLOCKER
+
+Teacher-scoped access cannot be correctly enforced until:
+
+-   Student includes assignedTeacherId
+-   All read/write paths validate assignment
+
+This is the highest-priority architectural change before production
+deployment.

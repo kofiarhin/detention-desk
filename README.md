@@ -50,3 +50,18 @@ npm run client
 - Protected routes redirect to `/login` if token is missing
 - Dashboard route (`/dashboard`) is admin-only (teacher is blocked)
 - Any API 401 clears session and redirects to `/login`
+
+## Production hardening
+
+See [`docs/production.md`](docs/production.md) for required backend env vars, strict CORS formatting, deployment health check paths, and runtime start command.
+
+## CI and protected main guidance
+
+This repository includes a GitHub Actions workflow at `.github/workflows/server-ci.yml` that runs backend tests on pull requests and pushes to `main`.
+
+To protect `main` in GitHub:
+
+1. Open **Settings → Branches → Add branch protection rule**.
+2. Target branch pattern: `main`.
+3. Enable **Require status checks to pass before merging**.
+4. Select the status check from this workflow (`test-server`).

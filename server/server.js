@@ -5,21 +5,37 @@ const dotenv = require("dotenv");
 const envPath = path.resolve(__dirname, "../.env");
 if (fs.existsSync(envPath)) dotenv.config({ path: envPath });
 
+const { validateStartupConfig } = require("./config/env");
 const { connectDB } = require("./config/db");
 const { buildApp } = require("./app");
 
 async function start() {
-  await connectDB();
+  const config = validateStartupConfig();
+
+  await connectDB(config.mongoUri);
 
   const app = buildApp();
-  const port = process.env.PORT || 5000;
 
-  app.listen(port, () => {
-    console.log(`[server] listening on :${port}`);
+  app.listen(config.port, () => {
+    console.log(
+      JSON.stringify({
+        level: "info",
+        msg: "server_listening",
+        port: config.port,
+        env: config.nodeEnv,
+      }),
+    );
   });
 }
 
 start().catch((err) => {
-  console.error("[server] fatal:", err);
+  console.error(
+    JSON.stringify({
+      level: "error",
+      msg: "startup_failure",
+      error: err.message,
+      stack: process.env.NODE_ENV === "production" ? undefined : err.stack,
+    }),
+  );
   process.exit(1);
 });

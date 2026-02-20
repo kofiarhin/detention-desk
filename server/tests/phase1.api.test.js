@@ -9,9 +9,16 @@ describe("Phase 1 API", () => {
   test("GET /health returns ok", async () => {
     const res = await request(app).get("/health");
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ success: true, data: { ok: true } });
+    expect(res.body).toEqual({ status: "ok" });
   });
 
+
+
+  test("GET /ready returns ok when database is connected", async () => {
+    const res = await request(app).get("/ready");
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ status: "ok" });
+  });
   test("POST /signup/school creates school + admin + policy + categories and returns token", async () => {
     const res = await request(app).post("/signup/school").send({
       schoolName: "Test Academy",

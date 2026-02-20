@@ -1,0 +1,15 @@
+.admin-students-toolbar {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.admin-students-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.admin-students-table th,
+.admin-students-table td {
+  border: 1px solid #e2e8f0;
+  padding: 0.5rem;
+}

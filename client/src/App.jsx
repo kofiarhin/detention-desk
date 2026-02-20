@@ -1,20 +1,22 @@
-import { Navigate, Outlet, Route, Routes } from 'react-router-dom'
-import ProtectedRoute from './components/protected-route/ProtectedRoute'
-import RoleRoute from './components/role-route/RoleRoute'
+import { Navigate, Route, Routes } from 'react-router-dom'
+import RequireAuth from './app/routes/RequireAuth'
 import AppLayout from './layouts/app-layout/AppLayout'
 import AuthLayout from './layouts/auth-layout/AuthLayout'
 import PublicLayout from './layouts/public-layout/PublicLayout'
 import AboutPage from './pages/about/AboutPage'
-import DashboardPage from './pages/dashboard/DashboardPage'
-import DetentionsPage from './pages/detentions/DetentionsPage'
-import FeaturesPage from './pages/features/FeaturesPage'
 import HomePage from './pages/home/HomePage'
-import IncidentsPage from './pages/incidents/IncidentsPage'
+import FeaturesPage from './pages/features/FeaturesPage'
 import LoginPage from './pages/login/LoginPage'
 import RegisterPage from './pages/register/RegisterPage'
-import RewardsPage from './pages/rewards/RewardsPage'
-import SettingsPage from './pages/settings/SettingsPage'
-import StudentsPage from './pages/students/StudentsPage'
+import AdminDashboardPage from './pages/admin/DashboardPage'
+import AdminDetentionsPage from './pages/admin/DetentionsPage'
+import AdminStudentsPage from './pages/admin/StudentsPage'
+import AdminTeachersPage from './pages/admin/TeachersPage'
+import ParentChangePasswordPage from './pages/parent/ChangePasswordPage'
+import ParentStudentDetailPage from './pages/parent/StudentDetailPage'
+import ParentStudentsPage from './pages/parent/StudentsPage'
+import TeacherStudentProfilePage from './pages/teacher/StudentProfilePage'
+import TeacherStudentsPage from './pages/teacher/StudentsPage'
 
 const App = () => {
   return (
@@ -30,21 +32,31 @@ const App = () => {
         <Route element={<RegisterPage />} path="/register" />
       </Route>
 
-      <Route element={<ProtectedRoute />}>
-        <Route element={<AppLayout />} path="/app">
-          <Route element={<DashboardPage />} path="dashboard" />
-          <Route element={<StudentsPage />} path="students" />
-          <Route element={<IncidentsPage />} path="incidents" />
-          <Route element={<DetentionsPage />} path="detentions" />
-          <Route element={<RewardsPage />} path="rewards" />
-          <Route element={<RoleRoute allowedRoles={['schoolAdmin']} />}>
-            <Route element={<SettingsPage />} path="settings" />
+      <Route element={<RequireAuth />}>
+        <Route element={<AppLayout />}>
+          <Route element={<Navigate replace to="/login" />} path="/app/*" />
+
+          <Route element={<RequireAuth allowedRoles={['schoolAdmin']} />}>
+            <Route element={<AdminDashboardPage />} path="/admin/dashboard" />
+            <Route element={<AdminTeachersPage />} path="/admin/teachers" />
+            <Route element={<AdminStudentsPage />} path="/admin/students" />
+            <Route element={<AdminDetentionsPage />} path="/admin/detentions" />
           </Route>
-          <Route element={<Navigate replace to="/app/dashboard" />} path="*" />
+
+          <Route element={<RequireAuth allowedRoles={['teacher']} />}>
+            <Route element={<TeacherStudentsPage />} path="/teacher/students" />
+            <Route element={<TeacherStudentProfilePage />} path="/teacher/students/:id" />
+          </Route>
+
+          <Route element={<RequireAuth allowedRoles={['parent']} />}>
+            <Route element={<ParentChangePasswordPage />} path="/parent/change-password" />
+            <Route element={<ParentStudentsPage />} path="/parent/students" />
+            <Route element={<ParentStudentDetailPage />} path="/parent/students/:id" />
+          </Route>
         </Route>
       </Route>
 
-      <Route element={<Navigate replace to="/" />} path="*" />
+      <Route element={<Navigate replace to="/login" />} path="*" />
     </Routes>
   )
 }

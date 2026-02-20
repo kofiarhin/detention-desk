@@ -7,7 +7,7 @@ import './login-page.styles.scss'
 
 const LoginPage = () => {
   const navigate = useNavigate()
-  const { login } = useAuth()
+  const { login, getRoleHome, sessionMessage } = useAuth()
   const [form, setForm] = useState({ schoolCode: '', email: '', password: '' })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -23,8 +23,8 @@ const LoginPage = () => {
     setError('')
 
     try {
-      await login(form)
-      navigate('/app/dashboard', { replace: true })
+      const nextSession = await login(form)
+      navigate(getRoleHome(nextSession.user), { replace: true })
     } catch (requestError) {
       setError(requestError.message)
     } finally {
@@ -35,6 +35,7 @@ const LoginPage = () => {
   return (
     <form className="auth-page" onSubmit={onSubmit}>
       <h1>Sign in to your school workspace</h1>
+      {sessionMessage ? <p className="auth-page-error">{sessionMessage}</p> : null}
       <Input id="schoolCode" label="School Code" name="schoolCode" onChange={onChange} required value={form.schoolCode} />
       <Input id="email" label="Email" name="email" onChange={onChange} required type="email" value={form.email} />
       <Input id="password" label="Password" name="password" onChange={onChange} required type="password" value={form.password} />

@@ -1,0 +1,15 @@
+.admin-dashboard-page {
+  gap: 1rem;
+}
+
+.admin-dashboard-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.admin-dashboard-card {
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 1rem;
+}

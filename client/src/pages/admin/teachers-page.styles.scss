@@ -1,0 +1,15 @@
+.admin-teachers-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.admin-teachers-table th,
+.admin-teachers-table td {
+  border: 1px solid #e2e8f0;
+  padding: 0.5rem;
+}
+
+.admin-form {
+  display: grid;
+  gap: 0.75rem;
+}

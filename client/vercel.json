@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://YOUR-HEROKU-APP.herokuapp.com/api/$1"
+      "destination": "https://detention-desk-api-fd5-9a3420b5.herokuapp.com/api/$1"
     }
   ]
 }

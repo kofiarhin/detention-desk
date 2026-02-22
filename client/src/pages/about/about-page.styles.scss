@@ -1,6 +1,102 @@
 .about-page {
-  max-width: 50rem;
+  max-width: 900px;
   margin: 0 auto;
-  padding: 2rem 1rem;
-  color: #1e293b;
+  padding: 4rem 1.5rem;
+  color: #f1f5f9;
+
+  &__header {
+    text-align: center;
+    margin-bottom: 4rem;
+
+    h1 {
+      font-size: clamp(2.5rem, 5vw, 3.5rem);
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      background: linear-gradient(135deg, #38bdf8 0%, #818cf8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 1rem;
+    }
+
+    .subtitle {
+      font-size: 1.25rem;
+      color: #94a3b8;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+  }
+
+  &__content {
+    display: grid;
+    gap: 3rem;
+
+    .mission-card {
+      background: #111827;
+      border: 1px solid #1f2937;
+      border-radius: 24px;
+      padding: 3rem;
+      position: relative;
+      overflow: hidden;
+
+      &::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 4px;
+        background: linear-gradient(90deg, #38bdf8, #818cf8);
+      }
+
+      h2 {
+        font-size: 1.75rem;
+        margin-bottom: 1.5rem;
+        color: #fff;
+      }
+      p {
+        font-size: 1.1rem;
+        line-height: 1.7;
+        color: #94a3b8;
+        margin-bottom: 1.5rem;
+      }
+    }
+  }
+
+  &__values {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-top: 2rem;
+
+    .value-item {
+      background: rgba(31, 41, 55, 0.4);
+      border: 1px solid #1f2937;
+      padding: 1.5rem;
+      border-radius: 16px;
+
+      h4 {
+        color: #38bdf8;
+        margin-bottom: 0.5rem;
+        font-size: 1.1rem;
+      }
+      p {
+        font-size: 0.95rem;
+        color: #64748b;
+        line-height: 1.5;
+      }
+    }
+  }
+
+  &__footer {
+    margin-top: 5rem;
+    text-align: center;
+    padding: 3rem;
+    background: linear-gradient(rgba(56, 189, 248, 0.05), transparent);
+    border-radius: 24px;
+
+    h3 {
+      margin-bottom: 1.5rem;
+      font-size: 1.5rem;
+    }
+  }
 }

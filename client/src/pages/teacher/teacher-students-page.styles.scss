@@ -1,0 +1,145 @@
+.teacher-students-page {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+
+  h1 {
+    font-size: 2.25rem;
+    font-weight: 800;
+    letter-spacing: -0.025em;
+    background: linear-gradient(135deg, #f8fafc 0%, #94a3b8 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .search-container {
+    display: flex;
+    gap: 0.75rem;
+    background: #111827;
+    padding: 0.75rem;
+    border-radius: 16px;
+    border: 1px solid #1f2937;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+
+    input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      padding: 0.5rem 1rem;
+      color: #fff;
+      font-size: 1rem;
+      outline: none;
+
+      &::placeholder {
+        color: #4b5563;
+      }
+    }
+
+    .search-btn {
+      background: #1f2937;
+      color: #38bdf8;
+      border: 1px solid #374151;
+      padding: 0.6rem 1.5rem;
+      border-radius: 10px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+
+      &:hover {
+        background: #38bdf8;
+        color: #0f172a;
+        border-color: #38bdf8;
+      }
+    }
+  }
+
+  .students-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.25rem;
+    padding: 0;
+    list-style: none;
+
+    .student-card-link {
+      text-decoration: none;
+      display: block;
+      background: #111827;
+      border: 1px solid #1f2937;
+      padding: 1.5rem;
+      border-radius: 16px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+      &:hover {
+        transform: translateY(-4px);
+        border-color: #38bdf8;
+        background: #1e293b;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4);
+      }
+
+      .student-name {
+        display: block;
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #f8fafc;
+        margin-bottom: 0.5rem;
+      }
+
+      .student-meta {
+        font-size: 0.85rem;
+        color: #64748b;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+    }
+  }
+
+  .pagination-bar {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1.5rem;
+    margin-top: 1rem;
+    padding: 1rem;
+
+    button {
+      background: #111827;
+      border: 1px solid #1f2937;
+      color: #fff;
+      padding: 0.6rem 1.2rem;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+
+      &:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+      }
+
+      &:not(:disabled):hover {
+        border-color: #38bdf8;
+        color: #38bdf8;
+      }
+    }
+
+    .page-indicator {
+      font-weight: 700;
+      color: #94a3b8;
+      font-variant-numeric: tabular-nums;
+    }
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    background: #111827;
+    border-radius: 20px;
+    border: 2px dashed #1f2937;
+    color: #4b5563;
+    font-weight: 500;
+  }
+}

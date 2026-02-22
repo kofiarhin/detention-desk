@@ -11,7 +11,6 @@ const TeacherStudentProfilePage = () => {
   const navigate = useNavigate();
   const { token } = useAuth();
   const [profile, setProfile] = useState(null);
-  // server returns paginated timeline lists: { items, page, limit, total }
   const [timeline, setTimeline] = useState({
     incidents: null,
     rewards: null,
@@ -25,283 +24,228 @@ const TeacherStudentProfilePage = () => {
 
   const load = useCallback(async () => {
     try {
-      const [profilePayload, timelinePayload] = await Promise.all([
+      const [p, t] = await Promise.all([
         apiRequest({ path: `/api/students/${id}/profile`, token }),
         apiRequest({ path: `/api/students/${id}/timeline`, token }),
       ]);
-
-      setProfile(profilePayload.data?.student || profilePayload.data);
-
+      setProfile(p.data?.student || p.data);
       setTimeline((prev) => ({
-        incidents: timelinePayload.data?.incidents ?? prev.incidents,
-        detentions: timelinePayload.data?.detentions ?? prev.detentions,
-        rewards: timelinePayload.data?.rewards ?? prev.rewards,
-        offsets: timelinePayload.data?.offsets ?? prev.offsets,
-        // notes are not part of the timeline endpoint (kept for UI compatibility)
+        incidents: t.data?.incidents ?? prev.incidents,
+        detentions: t.data?.detentions ?? prev.detentions,
+        rewards: t.data?.rewards ?? prev.rewards,
+        offsets: t.data?.offsets ?? prev.offsets,
         notes: Array.isArray(prev.notes) ? prev.notes : [],
       }));
-    } catch (error) {
-      if (error.status === 403) {
-        navigate("/teacher/students", { replace: true });
-        return;
-      }
-      setMessage(error.message);
+    } catch (err) {
+      if (err.status === 403) return navigate("/teacher/students");
+      setMessage(err.message);
     }
   }, [id, navigate, token]);
 
   useEffect(() => {
-    void load();
+    load();
   }, [load]);
 
   const items = useMemo(() => {
-    const value = timeline?.[tab];
-    const list = Array.isArray(value)
-      ? value
-      : Array.isArray(value?.items)
-        ? value.items
+    const val = timeline?.[tab];
+    const list = Array.isArray(val)
+      ? val
+      : Array.isArray(val?.items)
+        ? val.items
         : [];
-
-    return [...list].sort((a, b) => {
-      const bTime = new Date(
-        b.createdAt || b.occurredAt || b.awardedAt || b.appliedAt,
-      ).getTime();
-      const aTime = new Date(
-        a.createdAt || a.occurredAt || a.awardedAt || a.appliedAt,
-      ).getTime();
-      return bTime - aTime;
-    });
+    return [...list].sort(
+      (a, b) =>
+        new Date(b.createdAt || b.occurredAt) -
+        new Date(a.createdAt || a.occurredAt),
+    );
   }, [timeline, tab]);
 
-  const detentionItems = useMemo(() => {
-    const value = timeline?.detentions;
-    return Array.isArray(value)
-      ? value
-      : Array.isArray(value?.items)
-        ? value.items
-        : [];
-  }, [timeline]);
-
-  const submitAction = async (event) => {
-    event.preventDefault();
-    const formData = new FormData(event.currentTarget);
-    const payload = Object.fromEntries(formData.entries());
-
+  const handleAction = async (e) => {
+    e.preventDefault();
+    const data = Object.fromEntries(new FormData(e.currentTarget));
     try {
-      if (openAction === "incident") {
-        await apiRequest({
-          path: "/api/incidents",
-          method: "POST",
-          token,
-          body: {
+      const routes = {
+        incident: {
+          p: "/api/incidents",
+          b: {
+            ...data,
             studentId: id,
-            categoryId: payload.categoryId,
-            notes: payload.notes,
-            minutesAssigned: Number(payload.minutesAssigned || 0),
+            minutesAssigned: Number(data.minutesAssigned || 0),
           },
-        });
-      }
-
-      if (openAction === "reward") {
-        await apiRequest({
-          path: "/api/rewards",
-          method: "POST",
-          token,
-          body: {
+        },
+        reward: {
+          p: "/api/rewards",
+          b: {
+            ...data,
             studentId: id,
-            categoryId: payload.categoryId,
-            notes: payload.notes,
-            minutesAwarded: Number(payload.minutesAwarded || 0),
+            minutesAwarded: Number(data.minutesAwarded || 0),
           },
-        });
-      }
-
-      if (openAction === "note") {
-        await apiRequest({
-          path: "/api/notes",
-          method: "POST",
-          token,
-          body: { entityType: "student", entityId: id, text: payload.text },
-        });
-      }
-
-      if (openAction === "detention") {
-        await apiRequest({
-          path: "/api/incidents",
-          method: "POST",
-          token,
-          body: {
+        },
+        note: {
+          p: "/api/notes",
+          b: { entityType: "student", entityId: id, text: data.text },
+        },
+        detention: {
+          p: "/api/incidents",
+          b: {
+            ...data,
             studentId: id,
-            categoryId: payload.categoryId,
-            notes: payload.notes,
-            minutesAssigned: Number(payload.minutesAssigned || 30),
+            minutesAssigned: Number(data.minutesAssigned || 30),
           },
-        });
-      }
-
-      setOpenAction("");
-      setMessage("Saved successfully");
-      load();
-    } catch (error) {
-      setMessage(error.message);
-    }
-  };
-
-  const transitionDetention = async (detentionId, action) => {
-    const pathMap = {
-      serve: `/api/detentions/${detentionId}/serve`,
-      void: `/api/detentions/${detentionId}/void`,
-      schedule: `/api/detentions/${detentionId}`,
-    };
-    const methodMap = { serve: "POST", void: "POST", schedule: "PUT" };
-    const body =
-      action === "schedule"
-        ? { status: "scheduled", scheduledFor: new Date().toISOString() }
-        : undefined;
-
-    try {
+        },
+      };
       await apiRequest({
-        path: pathMap[action],
-        method: methodMap[action],
+        path: routes[openAction].p,
+        method: "POST",
         token,
-        body,
+        body: routes[openAction].b,
       });
-      setMessage("Detention updated");
+      setOpenAction("");
       load();
-    } catch (error) {
-      setMessage(error.message);
+    } catch (err) {
+      setMessage(err.message);
     }
-  };
-
-  const saveEdit = async (event) => {
-    event.preventDefault();
-    const formData = new FormData(event.currentTarget);
-    const payload = Object.fromEntries(formData.entries());
-    await apiRequest({
-      path: `/api/students/${id}`,
-      method: "PUT",
-      token,
-      body: payload,
-    });
-    setMessage("Student updated");
-    load();
   };
 
   return (
-    <section className="app-page teacher-student-profile-page">
-      <h1>Student Profile</h1>
-
-      {message ? <p>{message}</p> : null}
-
-      {profile ? (
-        <>
-          <h2>
-            {profile.firstName} {profile.lastName}
-          </h2>
-
-          <form className="teacher-edit-form" onSubmit={saveEdit}>
-            <input defaultValue={profile.firstName} name="firstName" required />
-            <input defaultValue={profile.lastName} name="lastName" required />
-            <input defaultValue={profile.yearGroup} name="yearGroup" required />
-            <input defaultValue={profile.form} name="form" required />
-            <select defaultValue={profile.status} name="status">
-              <option value="active">active</option>
-              <option value="inactive">inactive</option>
-            </select>
-            <button type="submit">Edit student</button>
-          </form>
-        </>
-      ) : (
-        <p>Loading profile...</p>
-      )}
-
-      <div>
-        {["incidents", "rewards", "detentions", "offsets", "notes"].map(
-          (item) => (
-            <button key={item} onClick={() => setTab(item)} type="button">
-              {item}
-            </button>
-          ),
-        )}
-      </div>
-
-      <div>
-        {!items.length ? (
-          <p>No {tab} yet.</p>
+    <section className="teacher-student-profile-page">
+      <div className="profile-card">
+        {profile ? (
+          <>
+            <h2>
+              {profile.firstName} {profile.lastName}
+            </h2>
+            <form
+              className="teacher-edit-form"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const body = Object.fromEntries(new FormData(e.currentTarget));
+                apiRequest({
+                  path: `/api/students/${id}`,
+                  method: "PUT",
+                  token,
+                  body,
+                }).then(() => {
+                  setMessage("Profile Updated");
+                  load();
+                });
+              }}
+            >
+              <input
+                defaultValue={profile.firstName}
+                name="firstName"
+                placeholder="First Name"
+                required
+              />
+              <input
+                defaultValue={profile.lastName}
+                name="lastName"
+                placeholder="Last Name"
+                required
+              />
+              <input
+                defaultValue={profile.yearGroup}
+                name="yearGroup"
+                placeholder="Year"
+                required
+              />
+              <input
+                defaultValue={profile.form}
+                name="form"
+                placeholder="Form"
+                required
+              />
+              <select defaultValue={profile.status} name="status">
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+              <button type="submit" className="form-submit">
+                Save Changes
+              </button>
+            </form>
+          </>
         ) : (
-          <ul>
-            {items.map((item) => (
-              <li key={item._id}>
-                {item.notes ||
-                  item.text ||
-                  item.status ||
-                  item.minutesAssigned ||
-                  item.minutesAwarded}
-              </li>
-            ))}
-          </ul>
+          <p>Initializing profile...</p>
         )}
       </div>
 
-      <div>
-        <button onClick={() => setOpenAction("incident")} type="button">
-          Log incident
-        </button>
-        <button onClick={() => setOpenAction("reward")} type="button">
-          Create reward
-        </button>
-        <button onClick={() => setOpenAction("note")} type="button">
-          Add note
-        </button>
-        <button onClick={() => setOpenAction("detention")} type="button">
-          Issue detention
+      <nav className="tabs-nav">
+        {["incidents", "rewards", "detentions", "notes"].map((t) => (
+          <button
+            key={t}
+            className={tab === t ? "active" : ""}
+            onClick={() => setTab(t)}
+          >
+            {t.charAt(0).toUpperCase() + t.slice(1)}
+          </button>
+        ))}
+      </nav>
+
+      <div className="timeline-container">
+        <ul className="timeline-list">
+          {items.map((i) => (
+            <li key={i._id}>
+              <div className="item-info">
+                <span>{i.notes || i.text || i.status}</span>
+                <small>
+                  {new Date(i.createdAt || i.occurredAt).toLocaleDateString()}
+                </small>
+              </div>
+              {i.minutesAssigned && (
+                <div className="badge">-{i.minutesAssigned}m</div>
+              )}
+            </li>
+          ))}
+          {!items.length && (
+            <p style={{ textAlign: "center", color: "#64748b" }}>
+              No records found.
+            </p>
+          )}
+        </ul>
+      </div>
+
+      <div className="action-grid">
+        <button onClick={() => setOpenAction("incident")}>Log Incident</button>
+        <button onClick={() => setOpenAction("reward")}>Log Reward</button>
+        <button onClick={() => setOpenAction("note")}>Add Note</button>
+        <button onClick={() => setOpenAction("detention")}>
+          Issue Detention
         </button>
       </div>
 
-      {detentionItems.map((detention) => (
-        <div key={detention._id}>
-          <span>{detention.status}</span>
-          <button
-            onClick={() => transitionDetention(detention._id, "serve")}
-            type="button"
-          >
-            serve
-          </button>
-          <button
-            onClick={() => transitionDetention(detention._id, "schedule")}
-            type="button"
-          >
-            schedule
-          </button>
-          <button
-            onClick={() => transitionDetention(detention._id, "void")}
-            type="button"
-          >
-            void
-          </button>
-        </div>
-      ))}
-
-      {openAction ? (
+      {openAction && (
         <Modal onClose={() => setOpenAction("")} title={`New ${openAction}`}>
-          <form className="teacher-action-form" onSubmit={submitAction}>
-            <input name="categoryId" placeholder="Category ID" required />
-            <textarea name="notes" placeholder="Notes" />
-            {openAction === "note" ? (
-              <textarea name="text" placeholder="Note" required />
-            ) : null}
-            {openAction !== "note" ? (
+          <form className="teacher-edit-form" onSubmit={handleAction}>
+            <input name="categoryId" placeholder="Category" required />
+            <textarea
+              name={openAction === "note" ? "text" : "notes"}
+              placeholder="Description..."
+              required
+              style={{
+                gridColumn: "span 2",
+                minHeight: "120px",
+                background: "#030712",
+                color: "#fff",
+                padding: "1rem",
+                borderRadius: "10px",
+                border: "1px solid #374151",
+              }}
+            />
+            {["incident", "reward", "detention"].includes(openAction) && (
               <input
                 name={
                   openAction === "reward" ? "minutesAwarded" : "minutesAssigned"
                 }
-                placeholder="Minutes"
                 type="number"
+                placeholder="Minutes"
               />
-            ) : null}
-            <button type="submit">Save</button>
+            )}
+            <button type="submit" className="form-submit">
+              Confirm Action
+            </button>
           </form>
         </Modal>
-      ) : null}
+      )}
     </section>
   );
 };

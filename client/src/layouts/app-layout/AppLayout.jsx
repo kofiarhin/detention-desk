@@ -1,7 +1,7 @@
-import { Outlet } from 'react-router-dom'
-import Sidebar from '../../components/sidebar/Sidebar'
-import Topbar from '../../components/topbar/Topbar'
-import './app-layout.styles.scss'
+import { Outlet } from "react-router-dom";
+import Sidebar from "../../components/sidebar/Sidebar";
+import Topbar from "../../components/topbar/Topbar";
+import "./app-layout.styles.scss";
 
 const AppLayout = () => {
   return (
@@ -14,7 +14,7 @@ const AppLayout = () => {
         </main>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default AppLayout
+export default AppLayout;

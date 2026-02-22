@@ -17,6 +17,7 @@ const dashboardRoutes = require("./routes/dashboardRoutes");
 const studentProfileRoutes = require("./routes/studentProfileRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const parentRoutes = require("./routes/parentRoutes");
+const testRoutes = require("./routes/testRoutes");
 
 const { getConfig, isConfigValidated } = require("./config/env");
 const { isDbReady } = require("./config/db");
@@ -113,6 +114,10 @@ function buildApp() {
   app.use("/owner", ownerRoutes);
 
   app.use("/api/admin", adminRoutes);
+  if (config.isTest) {
+    app.use("/api/test", testRoutes);
+  }
+
   app.use("/api/parent", parentRoutes);
 
   app.use("/api/students", studentProfileRoutes);

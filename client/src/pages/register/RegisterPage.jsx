@@ -63,7 +63,7 @@ const RegisterPage = () => {
         </div>
         <div className="auth-page-actions">
           <Button label="Go to Login" onClick={() => navigate('/login')} type="button" />
-          <Button label="Continue to Dashboard" onClick={() => navigate('/app/dashboard')} type="button" />
+          <Button label="Continue to Dashboard" onClick={() => navigate('/admin/dashboard')} type="button" />
         </div>
       </section>
     )

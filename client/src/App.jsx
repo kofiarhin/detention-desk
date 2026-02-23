@@ -9,6 +9,8 @@ import HomePage from "./pages/home/HomePage";
 import FeaturesPage from "./pages/features/FeaturesPage";
 import LoginPage from "./pages/login/LoginPage";
 import RegisterPage from "./pages/register/RegisterPage";
+import ForgotSchoolCodePage from "./pages/forgot-school-code/ForgotSchoolCodePage";
+import RevealSchoolCodePage from "./pages/reveal-school-code/RevealSchoolCodePage";
 import AdminDashboardPage from "./pages/admin/DashboardPage";
 import AdminDetentionsPage from "./pages/admin/DetentionsPage";
 import AdminStudentsPage from "./pages/admin/StudentsPage";
@@ -33,6 +35,11 @@ const App = () => {
         <Route element={<AuthLayout />}>
           <Route element={<LoginPage />} path="/login" />
           <Route element={<RegisterPage />} path="/register" />
+          <Route
+            element={<ForgotSchoolCodePage />}
+            path="/forgot-school-code"
+          />
+          <Route element={<RevealSchoolCodePage />} path="/reveal-school-code" />
         </Route>
 
         {/* Protected app area (still inside PublicLayout so header/footer stay) */}

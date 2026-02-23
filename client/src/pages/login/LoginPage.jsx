@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/set-state-in-effect */
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import Button from "../../components/button/Button";
 import Input from "../../components/input/Input";
 import { useAuth } from "../../context/AuthContext";
@@ -8,11 +8,21 @@ import "./login-page.styles.scss";
 
 const LoginPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login, getRoleHome, sessionMessage } = useAuth();
 
   const [form, setForm] = useState({ schoolCode: "", email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (location.state?.schoolCode) {
+      setForm((current) => ({
+        ...current,
+        schoolCode: location.state.schoolCode,
+      }));
+    }
+  }, [location.state]);
 
   const onChange = (event) => {
     const { name, value } = event.target;
@@ -80,6 +90,10 @@ const LoginPage = () => {
           placeholder="••••••••"
         />
 
+        <Link className="auth-page__forgot-link" to="/forgot-school-code">
+          Forgot school code?
+        </Link>
+
         <div className="auth-page__actions">
           <Button
             disabled={loading}
@@ -89,7 +103,7 @@ const LoginPage = () => {
         </div>
 
         <footer className="auth-page__helper">
-          Don't have an account?{" "}
+          Don&apos;t have an account?{" "}
           <Link to="/register">Register your school</Link>
         </footer>
       </form>

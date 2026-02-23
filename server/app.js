@@ -90,7 +90,17 @@ function buildApp() {
   });
 
   app.use(["/signup/school", "/api/signup/school"], authLimiter);
-  app.use(["/auth/login", "/api/auth/login", "/auth/change-password", "/api/auth/change-password"], authLimiter);
+  app.use(
+    [
+      "/auth/login",
+      "/api/auth/login",
+      "/auth/forgot-school-code",
+      "/api/auth/forgot-school-code",
+      "/auth/change-password",
+      "/api/auth/change-password",
+    ],
+    authLimiter,
+  );
 
   app.use("/api/admin/parents", methodScopedLimiter(writeLimiter, ["POST"]));
   app.use(

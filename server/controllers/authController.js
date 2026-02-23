@@ -1,3 +1,5 @@
+const bcrypt = require("bcryptjs");
+
 const School = require("../models/School");
 const SchoolPolicy = require("../models/SchoolPolicy");
 const User = require("../models/User");
@@ -74,6 +76,56 @@ exports.login = async (req, res) => {
   } catch (err) {
     console.error("[login] error:", err);
     return res.status(500).json(errorResponse("SERVER_ERROR", "Login failed"));
+  }
+};
+
+exports.forgotSchoolCode = async (req, res) => {
+  try {
+    const { email, password } = req.body || {};
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Validation failed",
+        code: "VALIDATION_ERROR",
+        errors: [{ field: "email", message: "email is required" }],
+      });
+    }
+
+    if (!password) {
+      return res.status(400).json({
+        success: false,
+        message: "Validation failed",
+        code: "VALIDATION_ERROR",
+        errors: [{ field: "password", message: "password is required" }],
+      });
+    }
+
+    const emailNorm = normalizeEmail(email);
+    const user = await User.findOne({ emailNormalized: emailNorm })
+      .select("_id schoolId passwordHash")
+      .lean();
+
+    if (!user || !user.passwordHash) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    const isMatch = await bcrypt.compare(String(password), user.passwordHash);
+    if (!isMatch || !user.schoolId) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    const school = await School.findById(user.schoolId)
+      .select("schoolCode")
+      .lean();
+
+    if (!school) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    return res.status(200).json({ schoolCode: school.schoolCode });
+  } catch (err) {
+    console.error("[forgotSchoolCode] error:", err);
+    return res.status(500).json({ message: "Readable error message" });
   }
 };
 

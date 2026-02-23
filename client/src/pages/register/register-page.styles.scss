@@ -1,47 +1,161 @@
-.auth-page {
-  display: grid;
-  gap: 0.8rem;
+/* Reuse the same layout tokens as login page, but keep file scoped */
+.auth-wrapper--register {
+  min-height: calc(100vh - 72px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(14px, 3.5vw, 28px);
 }
 
-.auth-page h1 {
-  margin: 0 0 0.6rem;
-  font-size: 1.35rem;
+.auth-page--register {
+  width: 100%;
+  max-width: 520px; /* register needs a touch more room */
+  background: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  padding: clamp(18px, 4.2vw, 34px);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.55);
+
+  .auth-page__header {
+    display: grid;
+    gap: 6px;
+    margin-bottom: 4px;
+  }
+
+  .auth-page__title {
+    margin: 0;
+    font-size: clamp(22px, 4.4vw, 28px);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    background: linear-gradient(135deg, #f8fafc 0%, #94a3b8 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .auth-page__subtitle {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.68);
+    font-size: 0.98rem;
+    line-height: 1.55;
+  }
+
+  .auth-page__error {
+    background: rgba(239, 68, 68, 0.1);
+    color: #fca5a5;
+    padding: 12px 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(239, 68, 68, 0.22);
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin: 0;
+  }
+
+  .auth-page__actions {
+    margin-top: 6px;
+
+    .button {
+      width: 100%;
+      border-radius: 12px;
+      padding: 0.9rem 1rem;
+      font-size: 1rem;
+    }
+
+    &--stack {
+      display: grid;
+      gap: 10px;
+    }
+  }
+
+  .auth-page__helper {
+    margin-top: 4px;
+    text-align: center;
+    font-size: 0.98rem;
+    color: rgba(255, 255, 255, 0.62);
+
+    a {
+      color: #38bdf8;
+      font-weight: 700;
+      text-decoration: none;
+
+      &:hover {
+        color: #7dd3fc;
+        text-decoration: underline;
+      }
+    }
+  }
+
+  /* Scoped Input styling */
+  .input-group {
+    gap: 8px;
+  }
+
+  .input-label {
+    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.72);
+  }
+
+  .input-field {
+    width: 100%;
+    min-height: 48px;
+    padding: 0.85rem 0.95rem;
+    border-radius: 12px;
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.92);
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    outline: none;
+
+    &::placeholder {
+      color: rgba(255, 255, 255, 0.45);
+    }
+
+    &:focus {
+      border-color: rgba(43, 108, 255, 0.55);
+      box-shadow: 0 0 0 4px rgba(43, 108, 255, 0.18);
+    }
+  }
+
+  /* Success card */
+  .auth-page__success {
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 14px;
+    display: grid;
+    gap: 10px;
+  }
+
+  .auth-page__success-label {
+    margin: 0;
+    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  .auth-page__success-code {
+    margin: 0;
+    font-size: clamp(22px, 5vw, 28px);
+    letter-spacing: 0.1em;
+    font-weight: 900;
+    color: rgba(255, 255, 255, 0.92);
+  }
+
+  .auth-page__success-actions {
+    .button {
+      width: 100%;
+      border-radius: 12px;
+      padding: 0.85rem 1rem;
+      font-size: 1rem;
+    }
+  }
 }
 
-.auth-page-error {
-  color: #dc2626;
-  margin: 0;
-}
-
-.auth-page-helper {
-  margin: 0;
-  font-size: 0.9rem;
-}
-
-.auth-page-success {
-  display: grid;
-  gap: 0.8rem;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.75rem;
-  background: #f9fafb;
-  padding: 1rem;
-}
-
-.auth-page-success-label {
-  margin: 0;
-  font-size: 0.85rem;
-  color: #4b5563;
-}
-
-.auth-page-success-code {
-  margin: 0;
-  font-size: 1.5rem;
-  letter-spacing: 0.08em;
-  font-weight: 700;
-  color: #111827;
-}
-
-.auth-page-actions {
-  display: grid;
-  gap: 0.6rem;
+@media (max-width: 380px) {
+  .auth-page--register {
+    border-radius: 16px;
+    gap: 12px;
+  }
 }

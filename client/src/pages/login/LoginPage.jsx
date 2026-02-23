@@ -9,6 +9,7 @@ import "./login-page.styles.scss";
 const LoginPage = () => {
   const navigate = useNavigate();
   const { login, getRoleHome, sessionMessage } = useAuth();
+
   const [form, setForm] = useState({ schoolCode: "", email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -36,21 +37,15 @@ const LoginPage = () => {
   return (
     <main className="auth-wrapper">
       <form className="auth-page" onSubmit={onSubmit}>
-        <header>
-          <h1>Sign in</h1>
-          <p
-            style={{
-              color: "#64748b",
-              fontSize: "0.9rem",
-              marginBottom: "0.5rem",
-            }}
-          >
+        <header className="auth-page__header">
+          <h1 className="auth-page__title">Sign in</h1>
+          <p className="auth-page__subtitle">
             Enter your credentials to access your workspace.
           </p>
         </header>
 
         {(sessionMessage || error) && (
-          <p className="auth-page-error">{sessionMessage || error}</p>
+          <p className="auth-page__error">{sessionMessage || error}</p>
         )}
 
         <Input
@@ -85,14 +80,15 @@ const LoginPage = () => {
           placeholder="••••••••"
         />
 
-        <Button
-          disabled={loading}
-          label={loading ? "Verifying..." : "Sign In"}
-          type="submit"
-          style={{ marginTop: "0.5rem" }}
-        />
+        <div className="auth-page__actions">
+          <Button
+            disabled={loading}
+            label={loading ? "Verifying..." : "Sign In"}
+            type="submit"
+          />
+        </div>
 
-        <footer className="auth-page-helper">
+        <footer className="auth-page__helper">
           Don't have an account?{" "}
           <Link to="/register">Register your school</Link>
         </footer>

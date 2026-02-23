@@ -1,56 +1,80 @@
+/* Shared auth layout + mobile-friendly sizing */
 .auth-wrapper {
-  min-height: calc(100vh - 100px);
+  min-height: calc(100vh - 72px);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1rem;
+  padding: clamp(14px, 3.5vw, 28px);
 }
 
 .auth-page {
   width: 100%;
-  max-width: 420px;
-  background: #111827;
-  border: 1px solid #1f2937;
+  max-width: 460px;
+  background: #0f172a; /* slightly clearer than #111827 */
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 20px;
-  padding: 2.5rem;
+  padding: clamp(18px, 4.2vw, 34px);
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  gap: 14px;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.55);
 
-  h1 {
-    margin: 0 0 0.5rem;
-    font-size: 1.75rem;
+  &__header {
+    display: grid;
+    gap: 6px;
+    margin-bottom: 4px;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: clamp(22px, 4.4vw, 28px);
     font-weight: 800;
-    letter-spacing: -0.025em;
-    line-height: 1.2;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
     background: linear-gradient(135deg, #f8fafc 0%, #94a3b8 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
   }
 
-  .auth-page-error {
+  &__subtitle {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.68);
+    font-size: 0.98rem;
+    line-height: 1.55;
+  }
+
+  &__error {
     background: rgba(239, 68, 68, 0.1);
-    color: #f87171;
-    padding: 0.75rem 1rem;
-    border-radius: 10px;
-    border: 1px solid rgba(239, 68, 68, 0.2);
-    font-size: 0.9rem;
-    font-weight: 500;
+    color: #fca5a5;
+    padding: 12px 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(239, 68, 68, 0.22);
+    font-size: 0.95rem;
+    font-weight: 600;
     margin: 0;
   }
 
-  .auth-page-helper {
-    margin-top: 0.5rem;
+  &__actions {
+    margin-top: 6px;
+
+    .button {
+      width: 100%;
+      border-radius: 12px;
+      padding: 0.9rem 1rem; /* bigger tap target */
+      font-size: 1rem;
+    }
+  }
+
+  &__helper {
+    margin-top: 4px;
     text-align: center;
-    font-size: 0.95rem;
-    color: #94a3b8;
+    font-size: 0.98rem;
+    color: rgba(255, 255, 255, 0.62);
 
     a {
       color: #38bdf8;
-      font-weight: 600;
+      font-weight: 700;
       text-decoration: none;
-      transition: color 0.2s;
 
       &:hover {
         color: #7dd3fc;
@@ -59,10 +83,42 @@
     }
   }
 
-  // Ensure common components respect the dark theme
+  /* Make shared Input component mobile-friendly + dark themed (scoped only to auth pages) */
   .input-group {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
+    gap: 8px;
+  }
+
+  .input-label {
+    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.72);
+  }
+
+  .input-field {
+    width: 100%;
+    min-height: 48px;
+    padding: 0.85rem 0.95rem;
+    border-radius: 12px;
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.92);
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    outline: none;
+
+    &::placeholder {
+      color: rgba(255, 255, 255, 0.45);
+    }
+
+    &:focus {
+      border-color: rgba(43, 108, 255, 0.55);
+      box-shadow: 0 0 0 4px rgba(43, 108, 255, 0.18);
+    }
+  }
+}
+
+/* Extra breathing room on very small screens */
+@media (max-width: 380px) {
+  .auth-page {
+    border-radius: 16px;
+    gap: 12px;
   }
 }

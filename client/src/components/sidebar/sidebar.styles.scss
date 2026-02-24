@@ -85,3 +85,19 @@ body.app-shell-sidebar-open .sidebar {
   background: rgba(255, 255, 255, 0.12);
   color: #fff;
 }
+
+@media (min-width: 960px) {
+  .sidebar {
+    position: sticky;
+    transform: translateX(0);
+    width: 260px;
+  }
+
+  body.app-shell-sidebar-open .sidebar {
+    transform: translateX(0);
+  }
+
+  .sidebar-close {
+    display: none;
+  }
+}

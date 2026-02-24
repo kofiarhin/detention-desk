@@ -1,114 +1,120 @@
 /* eslint-disable react-hooks/set-state-in-effect */
-import { useCallback, useEffect, useState } from 'react'
-import Modal from '../../components/modal/Modal'
-import { useAuth } from '../../context/AuthContext'
-import { apiRequest } from '../../services/api'
-import './students-page.styles.scss'
+import { useCallback, useEffect, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
+import { apiRequest } from "../../services/api";
+import "./teacher-students-page.styles.scss";
 
-const emptyForm = { firstName: '', lastName: '', admissionNumber: '', yearGroup: '', form: '', assignedTeacherId: '' }
+const TeacherStudentsPage = () => {
+  const { token } = useAuth();
+  const [searchParams] = useSearchParams();
+  const [students, setStudents] = useState([]);
+  const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState({ pages: 1 });
+  const [loading, setLoading] = useState(false);
 
-const AdminStudentsPage = () => {
-  const { token } = useAuth()
-  const [students, setStudents] = useState([])
-  const [teachers, setTeachers] = useState([])
-  const [query, setQuery] = useState('')
-  const [page, setPage] = useState(1)
-  const [meta, setMeta] = useState({ pages: 1 })
-  const [form, setForm] = useState(emptyForm)
-  const [selected, setSelected] = useState(null)
-  const [openCreate, setOpenCreate] = useState(false)
-  const [openReassign, setOpenReassign] = useState(false)
-
-  const loadTeachers = useCallback(async () => {
-    const payload = await apiRequest({ path: '/api/admin/teachers?limit=200', token })
-    setTeachers(payload.data || [])
-  }, [token])
-
-  const loadStudents = useCallback(async () => {
-    const payload = await apiRequest({ path: `/api/students?page=${page}&q=${encodeURIComponent(query)}`, token })
-    setStudents(payload.data || [])
-    setMeta(payload.meta || { pages: 1 })
-  }, [page, query, token])
-
-      useEffect(() => {
-    void loadTeachers()
-  }, [loadTeachers])
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const payload = await apiRequest({
+        path: `/api/students?page=${page}&q=${encodeURIComponent(query)}`,
+        token,
+      });
+      setStudents(payload.data || []);
+      setMeta(payload.meta || { pages: 1 });
+    } catch (err) {
+      console.error("Failed to load students:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [page, query, token]);
 
   useEffect(() => {
-    void loadStudents()
-  }, [loadStudents])
+    void load();
+  }, [load]);
 
-  const createStudent = async (event) => {
-    event.preventDefault()
-    await apiRequest({ path: '/api/students', method: 'POST', token, body: form })
-    setOpenCreate(false)
-    setForm(emptyForm)
-    loadStudents()
-  }
+  useEffect(() => {
+    const q = (searchParams.get("q") || "").trim();
+    if (q) {
+      setQuery(q);
+      setPage(1);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const updateStudent = async (student) => {
-    await apiRequest({ path: `/api/students/${student._id}`, method: 'PUT', token, body: student })
-    loadStudents()
-  }
-
-  const reassignStudent = async (teacherId) => {
-    await apiRequest({ path: `/api/admin/students/${selected._id}/reassign`, method: 'PATCH', token, body: { assignedTeacherId: teacherId } })
-    setOpenReassign(false)
-    setSelected(null)
-    loadStudents()
-  }
+  const handleSearch = (e) => {
+    e.preventDefault();
+    setPage(1);
+    load();
+  };
 
   return (
-    <section className="app-page">
-      <h1>Student Management</h1>
-      <div className="admin-students-toolbar">
-        <input onChange={(e) => setQuery(e.target.value)} placeholder="Search students" value={query} />
-        <button onClick={() => setPage(1)} type="button">Search</button>
-        <button onClick={() => setOpenCreate(true)} type="button">Create Student</button>
-      </div>
-      <table className="admin-students-table">
-        <thead><tr><th>Name</th><th>Admission</th><th>Year</th><th>Form</th><th>Status</th><th>Actions</th></tr></thead>
-        <tbody>
-          {students.map((student) => (
-            <tr key={student._id}>
-              <td>{student.firstName} {student.lastName}</td>
-              <td>{student.admissionNumber}</td>
-              <td><input defaultValue={student.yearGroup} onBlur={(e) => updateStudent({ ...student, yearGroup: e.target.value })} /></td>
-              <td><input defaultValue={student.form} onBlur={(e) => updateStudent({ ...student, form: e.target.value })} /></td>
-              <td>{student.status}</td>
-              <td><button onClick={() => { setSelected(student); setOpenReassign(true) }} type="button">Reassign</button></td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <div>
-        <button disabled={page <= 1} onClick={() => setPage((v) => v - 1)} type="button">Prev</button>
-        <span> Page {page} of {meta.pages || 1} </span>
-        <button disabled={page >= (meta.pages || 1)} onClick={() => setPage((v) => v + 1)} type="button">Next</button>
-      </div>
-      {openCreate ? (
-        <Modal onClose={() => setOpenCreate(false)} title="Create Student">
-          <form className="admin-form" onSubmit={createStudent}>
-            {Object.keys(emptyForm).map((key) => key === 'assignedTeacherId' ? (
-              <select key={key} onChange={(e) => setForm((v) => ({ ...v, assignedTeacherId: e.target.value }))} required value={form.assignedTeacherId}>
-                <option value="">Assigned Teacher</option>
-                {teachers.map((teacher) => <option key={teacher._id || teacher.id} value={teacher._id || teacher.id}>{teacher.name}</option>)}
-              </select>
-            ) : <input key={key} onChange={(e) => setForm((v) => ({ ...v, [key]: e.target.value }))} placeholder={key} required value={form[key]} />)}
-            <button type="submit">Create</button>
-          </form>
-        </Modal>
-      ) : null}
-      {openReassign && selected ? (
-        <Modal onClose={() => setOpenReassign(false)} title="Reassign Student">
-          <select defaultValue="" onChange={(e) => reassignStudent(e.target.value)}>
-            <option value="" disabled>Select teacher</option>
-            {teachers.map((teacher) => <option key={teacher._id || teacher.id} value={teacher._id || teacher.id}>{teacher.name}</option>)}
-          </select>
-        </Modal>
-      ) : null}
-    </section>
-  )
-}
+    <section className="app-page teacher-students-page">
+      <h1>Assigned Students</h1>
 
-export default AdminStudentsPage
+      <form className="search-container" onSubmit={handleSearch}>
+        <input
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search by student name or form..."
+          value={query}
+        />
+        <button className="search-btn" type="submit">
+          Search
+        </button>
+      </form>
+
+      {loading ? (
+        <div className="empty-state">Refreshing student records...</div>
+      ) : students.length ? (
+        <ul className="students-grid">
+          {students.map((student) => (
+            <li key={student._id}>
+              <Link
+                className="student-card-link"
+                to={`/teacher/students/${student._id}`}
+              >
+                <span className="student-name">
+                  {student.firstName} {student.lastName}
+                </span>
+                <span className="student-meta">
+                  Year {student.yearGroup || "N/A"} • Form{" "}
+                  {student.form || "N/A"}
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <div className="empty-state">
+          No students found matching your criteria.
+        </div>
+      )}
+
+      <footer className="pagination-bar">
+        <button
+          disabled={page <= 1}
+          onClick={() => setPage((v) => v - 1)}
+          type="button"
+        >
+          Previous
+        </button>
+
+        <span className="page-indicator">
+          {page} <small style={{ color: "#4b5563", margin: "0 4px" }}>/</small>{" "}
+          {meta.pages || 1}
+        </span>
+
+        <button
+          disabled={page >= (meta.pages || 1)}
+          onClick={() => setPage((v) => v + 1)}
+          type="button"
+        >
+          Next
+        </button>
+      </footer>
+    </section>
+  );
+};
+
+export default TeacherStudentsPage;

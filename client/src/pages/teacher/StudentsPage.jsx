@@ -1,12 +1,13 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { apiRequest } from "../../services/api";
 import "./teacher-students-page.styles.scss";
 
 const TeacherStudentsPage = () => {
   const { token } = useAuth();
+  const [searchParams] = useSearchParams();
   const [students, setStudents] = useState([]);
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
@@ -22,8 +23,6 @@ const TeacherStudentsPage = () => {
       });
       setStudents(payload.data || []);
       setMeta(payload.meta || { pages: 1 });
-    } catch (err) {
-      console.error("Failed to load students:", err);
     } finally {
       setLoading(false);
     }
@@ -33,6 +32,15 @@ const TeacherStudentsPage = () => {
     void load();
   }, [load]);
 
+  useEffect(() => {
+    const q = (searchParams.get("q") || "").trim();
+    if (q) {
+      setQuery(q);
+      setPage(1);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleSearch = (e) => {
     e.preventDefault();
     setPage(1);
@@ -40,49 +48,60 @@ const TeacherStudentsPage = () => {
   };
 
   return (
-    <section className="app-page teacher-students-page">
-      <h1>Assigned Students</h1>
+    <section className="teacher-students-page">
+      <header className="teacher-students-page__header">
+        <div className="teacher-students-page__title-wrap">
+          <h1 className="teacher-students-page__title">Assigned Students</h1>
+          <p className="teacher-students-page__subtitle">
+            Search and open a student profile.
+          </p>
+        </div>
 
-      <form className="search-container" onSubmit={handleSearch}>
-        <input
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search by student name or form..."
-          value={query}
-        />
-        <button className="search-btn" type="submit">
-          Search
-        </button>
-      </form>
+        <form className="teacher-students-page__search" onSubmit={handleSearch}>
+          <input
+            className="teacher-students-page__search-input"
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search by name or form…"
+            value={query}
+          />
+          <button className="teacher-students-page__search-btn" type="submit">
+            Search
+          </button>
+        </form>
+      </header>
 
       {loading ? (
-        <div className="empty-state">Refreshing student records...</div>
+        <div className="teacher-students-page__empty">Refreshing…</div>
       ) : students.length ? (
-        <ul className="students-grid">
+        <ul className="teacher-students-page__grid">
           {students.map((student) => (
-            <li key={student._id}>
+            <li className="teacher-students-page__card" key={student._id}>
               <Link
-                className="student-card-link"
+                className="teacher-students-page__card-link"
                 to={`/teacher/students/${student._id}`}
               >
-                <span className="student-name">
-                  {student.firstName} {student.lastName}
-                </span>
-                <span className="student-meta">
-                  Year {student.yearGroup || "N/A"} • Form{" "}
-                  {student.form || "N/A"}
-                </span>
+                <div className="teacher-students-page__card-top">
+                  <span className="teacher-students-page__name">
+                    {student.firstName} {student.lastName}
+                  </span>
+                  <span className="teacher-students-page__badge">
+                    Year {student.yearGroup || "N/A"}
+                  </span>
+                </div>
+                <div className="teacher-students-page__meta">
+                  Form {student.form || "N/A"}
+                </div>
               </Link>
             </li>
           ))}
         </ul>
       ) : (
-        <div className="empty-state">
-          No students found matching your criteria.
-        </div>
+        <div className="teacher-students-page__empty">No students found.</div>
       )}
 
-      <footer className="pagination-bar">
+      <footer className="teacher-students-page__pagination">
         <button
+          className="teacher-students-page__page-btn"
           disabled={page <= 1}
           onClick={() => setPage((v) => v - 1)}
           type="button"
@@ -90,12 +109,12 @@ const TeacherStudentsPage = () => {
           Previous
         </button>
 
-        <span className="page-indicator">
-          {page} <small style={{ color: "#4b5563", margin: "0 4px" }}>/</small>{" "}
-          {meta.pages || 1}
+        <span className="teacher-students-page__page-indicator">
+          {page} / {meta.pages || 1}
         </span>
 
         <button
+          className="teacher-students-page__page-btn"
           disabled={page >= (meta.pages || 1)}
           onClick={() => setPage((v) => v + 1)}
           type="button"

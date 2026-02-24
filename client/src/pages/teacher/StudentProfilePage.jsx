@@ -3,13 +3,21 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Modal from "../../components/modal/Modal";
 import { useAuth } from "../../context/AuthContext";
+import { useCategories } from "../../context/CategoriesContext";
 import { apiRequest } from "../../services/api";
 import "./student-profile-page.styles.scss";
+
+const actionCategoryTypeMap = {
+  incident: "behaviour",
+  detention: "behaviour",
+  reward: "reward",
+};
 
 const TeacherStudentProfilePage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { token } = useAuth();
+  const { ensureCategories, getActive, byId, error: categoryError } = useCategories();
   const [profile, setProfile] = useState(null);
   const [timeline, setTimeline] = useState({
     incidents: null,
@@ -21,6 +29,9 @@ const TeacherStudentProfilePage = () => {
   const [tab, setTab] = useState("incidents");
   const [openAction, setOpenAction] = useState("");
   const [message, setMessage] = useState("");
+
+  const categoryType = actionCategoryTypeMap[openAction] || "";
+  const categoryOptions = categoryType ? getActive(categoryType) : [];
 
   const load = useCallback(async () => {
     try {
@@ -34,7 +45,7 @@ const TeacherStudentProfilePage = () => {
         detentions: t.data?.detentions ?? prev.detentions,
         rewards: t.data?.rewards ?? prev.rewards,
         offsets: t.data?.offsets ?? prev.offsets,
-        notes: Array.isArray(prev.notes) ? prev.notes : [],
+        notes: Array.isArray(t.data?.notes) ? t.data.notes : prev.notes,
       }));
     } catch (err) {
       if (err.status === 403) return navigate("/teacher/students");
@@ -45,6 +56,11 @@ const TeacherStudentProfilePage = () => {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (!categoryType) return;
+    ensureCategories(categoryType).catch(() => null);
+  }, [categoryType, ensureCategories]);
 
   const items = useMemo(() => {
     const val = timeline?.[tab];
@@ -63,6 +79,7 @@ const TeacherStudentProfilePage = () => {
   const handleAction = async (e) => {
     e.preventDefault();
     const data = Object.fromEntries(new FormData(e.currentTarget));
+
     try {
       const routes = {
         incident: {
@@ -169,6 +186,8 @@ const TeacherStudentProfilePage = () => {
         )}
       </div>
 
+      {message && <p>{message}</p>}
+
       <nav className="tabs-nav">
         {["incidents", "rewards", "detentions", "notes"].map((t) => (
           <button
@@ -183,19 +202,27 @@ const TeacherStudentProfilePage = () => {
 
       <div className="timeline-container">
         <ul className="timeline-list">
-          {items.map((i) => (
-            <li key={i._id}>
-              <div className="item-info">
-                <span>{i.notes || i.text || i.status}</span>
-                <small>
-                  {new Date(i.createdAt || i.occurredAt).toLocaleDateString()}
-                </small>
-              </div>
-              {i.minutesAssigned && (
-                <div className="badge">-{i.minutesAssigned}m</div>
-              )}
-            </li>
-          ))}
+          {items.map((i) => {
+            const categoryName = i.categoryId ? byId[i.categoryId]?.name : "";
+            const detailText = i.notes || i.text || i.status || "";
+            const displayText = categoryName
+              ? `${categoryName}${detailText ? ` - ${detailText}` : ""}`
+              : detailText || "Record";
+
+            return (
+              <li key={i._id}>
+                <div className="item-info">
+                  <span>{displayText}</span>
+                  <small>
+                    {new Date(i.createdAt || i.occurredAt).toLocaleDateString()}
+                  </small>
+                </div>
+                {i.minutesAssigned ? (
+                  <div className="badge">-{i.minutesAssigned}m</div>
+                ) : null}
+              </li>
+            );
+          })}
           {!items.length && (
             <p style={{ textAlign: "center", color: "#64748b" }}>
               No records found.
@@ -208,15 +235,23 @@ const TeacherStudentProfilePage = () => {
         <button onClick={() => setOpenAction("incident")}>Log Incident</button>
         <button onClick={() => setOpenAction("reward")}>Log Reward</button>
         <button onClick={() => setOpenAction("note")}>Add Note</button>
-        <button onClick={() => setOpenAction("detention")}>
-          Issue Detention
-        </button>
+        <button onClick={() => setOpenAction("detention")}>Issue Detention</button>
       </div>
 
       {openAction && (
         <Modal onClose={() => setOpenAction("")} title={`New ${openAction}`}>
           <form className="teacher-edit-form" onSubmit={handleAction}>
-            <input name="categoryId" placeholder="Category" required />
+            {categoryType ? (
+              <select name="categoryId" defaultValue="" required>
+                <option value="">Select category...</option>
+                {categoryOptions.map((category) => (
+                  <option key={category._id} value={category._id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+            ) : null}
+
             <textarea
               name={openAction === "note" ? "text" : "notes"}
               placeholder="Description..."
@@ -237,9 +272,11 @@ const TeacherStudentProfilePage = () => {
                   openAction === "reward" ? "minutesAwarded" : "minutesAssigned"
                 }
                 type="number"
+                min="0"
                 placeholder="Minutes"
               />
             )}
+            {categoryError ? <p>{categoryError}</p> : null}
             <button type="submit" className="form-submit">
               Confirm Action
             </button>

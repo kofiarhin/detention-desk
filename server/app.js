@@ -80,7 +80,8 @@ function buildApp() {
   });
 
   app.get("/ready", (req, res) => {
-    const configReady = isConfigValidated() || config.isTest || !config.isProduction;
+    const configReady =
+      isConfigValidated() || config.isTest || !config.isProduction;
 
     if (!configReady || !isDbReady()) {
       return res.status(503).json({ status: "not_ready", code: "NOT_READY" });
@@ -107,9 +108,18 @@ function buildApp() {
     ["/api/admin/teachers", "/api/admin/students"],
     methodScopedLimiter(writeLimiter, ["POST", "PATCH"]),
   );
-  app.use(["/api/incidents", "/api/rewards", "/api/notes"], methodScopedLimiter(writeLimiter, ["POST", "PUT", "PATCH", "DELETE"]));
-  app.use("/api/detentions/bulk", methodScopedLimiter(bulkLimiter, ["POST", "PUT", "PATCH"]));
-  app.use("/api/detentions", methodScopedLimiter(writeLimiter, ["POST", "PUT", "PATCH", "DELETE"]));
+  app.use(
+    ["/api/incidents", "/api/rewards", "/api/notes"],
+    methodScopedLimiter(writeLimiter, ["POST", "PUT", "PATCH", "DELETE"]),
+  );
+  app.use(
+    "/api/detentions/bulk",
+    methodScopedLimiter(bulkLimiter, ["POST", "PUT", "PATCH"]),
+  );
+  app.use(
+    "/api/detentions",
+    methodScopedLimiter(writeLimiter, ["POST", "PUT", "PATCH", "DELETE"]),
+  );
 
   app.use("/signup", signupRoutes);
   app.use("/api/signup", signupRoutes);
@@ -118,7 +128,10 @@ function buildApp() {
 
   // tenant-scoped routes (schoolId required; owner forbidden here)
   app.use("/policy", policyRoutes);
+
+  // categories (support legacy + /api alias)
   app.use("/categories", categoryRoutes);
+  app.use("/api/categories", categoryRoutes);
 
   // platform owner routes (role=owner; schoolId null)
   app.use("/owner", ownerRoutes);
@@ -157,10 +170,13 @@ function buildApp() {
       }),
     );
 
-    const status = err.statusCode || (err.message === "CORS origin blocked" ? 403 : 500);
+    const status =
+      err.statusCode || (err.message === "CORS origin blocked" ? 403 : 500);
 
     if (err.message === "CORS origin blocked") {
-      return res.status(status).json(errorResponse("CORS_FORBIDDEN", "Origin not allowed"));
+      return res
+        .status(status)
+        .json(errorResponse("CORS_FORBIDDEN", "Origin not allowed"));
     }
 
     return res

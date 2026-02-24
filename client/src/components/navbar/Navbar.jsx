@@ -1,9 +1,27 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Link, NavLink, useLocation } from "react-router-dom";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 import "./navbar.styles.scss";
 
+const roleNavItems = {
+  schoolAdmin: [
+    { label: "Dashboard", href: "/admin/dashboard" },
+    { label: "Teachers", href: "/admin/teachers" },
+    { label: "Students", href: "/admin/students" },
+    { label: "Detentions", href: "/admin/detentions" },
+    { label: "Parents", href: "/admin/parents" },
+  ],
+  teacher: [{ label: "Students", href: "/teacher/students" }],
+  parent: [
+    { label: "Students", href: "/parent/students" },
+    { label: "Change Password", href: "/parent/change-password" },
+  ],
+};
+
 const Navbar = () => {
+  const navigate = useNavigate();
   const { pathname } = useLocation();
+  const { isAuthenticated, isBootstrapping, user, logout, getRoleHome } = useAuth();
   const isLanding = pathname === "/";
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -12,7 +30,7 @@ const Navbar = () => {
   const touchStartX = useRef(null);
   const touchLastX = useRef(null);
 
-  const navItems = useMemo(
+  const publicItems = useMemo(
     () => [
       { label: "Features", href: "/#features", type: "hash" },
       { label: "Pricing", href: "/#pricing", type: "hash" },
@@ -20,6 +38,9 @@ const Navbar = () => {
     ],
     [],
   );
+
+  const protectedItems = roleNavItems[user?.role] || [];
+  const showAuthenticated = !isBootstrapping && isAuthenticated && user;
 
   const closeAll = () => {
     setMenuOpen(false);
@@ -48,7 +69,6 @@ const Navbar = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // swipe: right swipe from left edge opens, left swipe closes
   useEffect(() => {
     const onTouchStart = (e) => {
       if (!e.touches?.length) return;
@@ -69,10 +89,7 @@ const Navbar = () => {
 
       const delta = end - start;
 
-      // open: swipe right from left edge
       if (!menuOpen && start < 24 && delta > 60) setMenuOpen(true);
-
-      // close: swipe left while open
       if (menuOpen && delta < -60) setMenuOpen(false);
 
       touchStartX.current = null;
@@ -100,6 +117,12 @@ const Navbar = () => {
     }
   };
 
+  const handleLogout = () => {
+    logout();
+    closeAll();
+    navigate("/login", { replace: true });
+  };
+
   return (
     <header className={`app-navbar ${isLanding ? "app-navbar--landing" : ""}`}>
       <div className="app-navbar__container">
@@ -116,11 +139,7 @@ const Navbar = () => {
             <span />
           </button>
 
-          <Link
-            to="/"
-            className="app-navbar__brand"
-            aria-label="Detention Desk"
-          >
+          <Link to="/" className="app-navbar__brand" aria-label="Detention Desk">
             <span className="app-navbar__brand-mark" aria-hidden="true">
               ⌂
             </span>
@@ -128,9 +147,8 @@ const Navbar = () => {
           </Link>
         </div>
 
-        {/* Desktop top nav */}
         <nav className="app-navbar__nav" aria-label="Primary">
-          {navItems.map((item) =>
+          {publicItems.map((item) =>
             item.type === "hash" ? (
               <a
                 key={item.label}
@@ -153,6 +171,30 @@ const Navbar = () => {
             ),
           )}
 
+          {showAuthenticated ? (
+            <>
+              <NavLink
+                className={({ isActive }) =>
+                  `app-navbar__nav-link ${isActive ? "is-active" : ""}`
+                }
+                to={getRoleHome(user)}
+              >
+                App
+              </NavLink>
+              {protectedItems.map((item) => (
+                <NavLink
+                  key={item.href}
+                  className={({ isActive }) =>
+                    `app-navbar__nav-link ${isActive ? "is-active" : ""}`
+                  }
+                  to={item.href}
+                >
+                  {item.label}
+                </NavLink>
+              ))}
+            </>
+          ) : null}
+
           <div
             className={`app-navbar__dropdown ${dropdownOpen ? "is-open" : ""}`}
             onMouseEnter={() => setDropdownOpen(true)}
@@ -172,50 +214,46 @@ const Navbar = () => {
             </button>
 
             <div className="app-navbar__dropdown-menu" role="menu">
-              <Link
-                to="/contact"
-                className="app-navbar__dropdown-item"
-                role="menuitem"
-              >
+              <Link to="/contact" className="app-navbar__dropdown-item" role="menuitem">
                 Contact
               </Link>
-              <Link
-                to="/privacy"
-                className="app-navbar__dropdown-item"
-                role="menuitem"
-              >
+              <Link to="/privacy" className="app-navbar__dropdown-item" role="menuitem">
                 Privacy
               </Link>
-              <Link
-                to="/terms"
-                className="app-navbar__dropdown-item"
-                role="menuitem"
-              >
+              <Link to="/terms" className="app-navbar__dropdown-item" role="menuitem">
                 Terms
               </Link>
             </div>
           </div>
 
-          <NavLink
-            className={({ isActive }) =>
-              `app-navbar__nav-link app-navbar__nav-link--muted ${
-                isActive ? "is-active" : ""
-              }`
-            }
-            to="/login"
-          >
-            Login
-          </NavLink>
+          {!isBootstrapping && !showAuthenticated ? (
+            <NavLink
+              className={({ isActive }) =>
+                `app-navbar__nav-link app-navbar__nav-link--muted ${
+                  isActive ? "is-active" : ""
+                }`
+              }
+              to="/login"
+            >
+              Login
+            </NavLink>
+          ) : null}
         </nav>
 
         <div className="app-navbar__right">
-          <Link to="/register" className="app-navbar__cta">
-            Start Free Trial
-          </Link>
+          {showAuthenticated ? (
+            <button className="app-navbar__logout" onClick={handleLogout} type="button">
+              Logout
+            </button>
+          ) : null}
+          {!isBootstrapping && !showAuthenticated ? (
+            <Link to="/register" className="app-navbar__cta">
+              Start Free Trial
+            </Link>
+          ) : null}
         </div>
       </div>
 
-      {/* Mobile backdrop */}
       <button
         className={`app-navbar__backdrop ${menuOpen ? "is-open" : ""}`}
         type="button"
@@ -223,7 +261,6 @@ const Navbar = () => {
         onClick={closeAll}
       />
 
-      {/* Mobile side nav */}
       <aside className={`app-navbar__sidenav ${menuOpen ? "is-open" : ""}`}>
         <div className="app-navbar__sidenav-top">
           <span className="app-navbar__sidenav-title">Menu</span>
@@ -238,7 +275,7 @@ const Navbar = () => {
         </div>
 
         <div className="app-navbar__sidenav-links">
-          {navItems.map((item) =>
+          {publicItems.map((item) =>
             item.type === "hash" ? (
               <a
                 key={item.label}
@@ -262,25 +299,54 @@ const Navbar = () => {
             ),
           )}
 
-          <div className="app-navbar__side-divider" />
+          {showAuthenticated ? (
+            <>
+              <div className="app-navbar__side-divider" />
+              <NavLink
+                className={({ isActive }) =>
+                  `app-navbar__side-link ${isActive ? "is-active" : ""}`
+                }
+                to={getRoleHome(user)}
+                onClick={closeAll}
+              >
+                App
+              </NavLink>
+              {protectedItems.map((item) => (
+                <NavLink
+                  key={item.href}
+                  className={({ isActive }) =>
+                    `app-navbar__side-link ${isActive ? "is-active" : ""}`
+                  }
+                  to={item.href}
+                  onClick={closeAll}
+                >
+                  {item.label}
+                </NavLink>
+              ))}
+              <button className="app-navbar__side-logout" onClick={handleLogout} type="button">
+                Logout
+              </button>
+            </>
+          ) : null}
 
-          <NavLink
-            className={({ isActive }) =>
-              `app-navbar__side-link ${isActive ? "is-active" : ""}`
-            }
-            to="/login"
-            onClick={closeAll}
-          >
-            Login
-          </NavLink>
+          {!isBootstrapping && !showAuthenticated ? (
+            <>
+              <div className="app-navbar__side-divider" />
+              <NavLink
+                className={({ isActive }) =>
+                  `app-navbar__side-link ${isActive ? "is-active" : ""}`
+                }
+                to="/login"
+                onClick={closeAll}
+              >
+                Login
+              </NavLink>
 
-          <Link
-            className="app-navbar__side-cta"
-            to="/register"
-            onClick={closeAll}
-          >
-            Start Free Trial
-          </Link>
+              <Link className="app-navbar__side-cta" to="/register" onClick={closeAll}>
+                Start Free Trial
+              </Link>
+            </>
+          ) : null}
 
           <div className="app-navbar__side-mini">
             <Link to="/privacy" onClick={closeAll}>

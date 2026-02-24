@@ -3,7 +3,7 @@ const router = require("express").Router();
 const { requireAuth } = require("../middleware/requireAuth");
 const { requireTenant } = require("../middleware/requireTenant");
 const { requireSchoolAdmin } = require("../middleware/requireRole");
-const { createParentAndLink, revokeParentLink } = require("../controllers/adminParentController");
+const { createParentAndLink, listParentLinks, revokeParentLink } = require("../controllers/adminParentController");
 const {
   createTeacher,
   listTeachers,
@@ -15,6 +15,7 @@ const {
 router.use(requireAuth, requireTenant, requireSchoolAdmin);
 
 router.post("/parents", createParentAndLink);
+router.get("/parent-links", listParentLinks);
 router.patch("/parent-links/:id/revoke", revokeParentLink);
 
 router.post("/teachers", createTeacher);

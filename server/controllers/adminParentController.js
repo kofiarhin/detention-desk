@@ -118,6 +118,40 @@ exports.createParentAndLink = async (req, res) => {
   }
 };
 
+
+exports.listParentLinks = async (req, res) => {
+  try {
+    const schoolId = req.user.schoolId;
+
+    const links = await ParentStudentLink.find({ schoolId })
+      .populate({ path: "parentId", select: "name email" })
+      .populate({ path: "studentId", select: "firstName lastName" })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const mapped = links.map((link) => ({
+      id: String(link._id),
+      parentId: link.parentId?._id ? String(link.parentId._id) : String(link.parentId || ""),
+      parentName: link.parentId?.name || "",
+      parentEmail: link.parentId?.email || "",
+      studentId: link.studentId?._id ? String(link.studentId._id) : String(link.studentId || ""),
+      studentName: link.studentId
+        ? `${link.studentId.firstName || ""} ${link.studentId.lastName || ""}`.trim()
+        : "",
+      relationshipType: link.relationshipType || "",
+      status: link.status,
+      createdAt: link.createdAt,
+    }));
+
+    return res.json(successResponse(mapped));
+  } catch (err) {
+    console.error("[listParentLinks] error:", err);
+    return res
+      .status(500)
+      .json(errorResponse("SERVER_ERROR", "Could not load parent links"));
+  }
+};
+
 exports.revokeParentLink = async (req, res) => {
   try {
     const schoolId = req.user.schoolId;

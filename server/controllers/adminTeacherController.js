@@ -128,6 +128,87 @@ exports.reactivateTeacher = async (req, res) => {
   }
 };
 
+exports.reassignTeacherGroup = async (req, res) => {
+  try {
+    const schoolId = req.auth.schoolId;
+    const { teacherId } = req.params;
+    const { groupId } = req.body || {};
+
+    if (!mongoose.Types.ObjectId.isValid(teacherId)) {
+      return res.status(400).json(errorResponse("VALIDATION_ERROR", "teacherId is invalid"));
+    }
+
+    const teacher = await User.findOne({
+      _id: teacherId,
+      schoolId,
+      role: "teacher",
+    }).lean();
+
+    if (!teacher) {
+      return res.status(404).json(errorResponse("NOT_FOUND", "Teacher not found"));
+    }
+
+    const currentGroup = await Group.findOne({ schoolId, ownerTeacherId: teacherId });
+    const currentGroupId = currentGroup ? String(currentGroup._id) : null;
+
+    if (groupId === null) {
+      if (currentGroup) {
+        currentGroup.ownerTeacherId = null;
+        await currentGroup.save();
+        await Student.updateMany(
+          { schoolId, groupId: currentGroup._id },
+          { $set: { assignedTeacherId: null } },
+        );
+      }
+
+      return res.json(successResponse(mapTeacherWithGroup(teacher, null)));
+    }
+
+    if (!groupId) {
+      return res.status(400).json(errorResponse("VALIDATION_ERROR", "groupId is required or null"));
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(groupId)) {
+      return res.status(400).json(errorResponse("VALIDATION_ERROR", "groupId is invalid"));
+    }
+
+    const newGroup = await Group.findOne({ _id: groupId, schoolId });
+
+    if (!newGroup) {
+      return res.status(404).json(errorResponse("NOT_FOUND", "Group not found"));
+    }
+
+    if (newGroup.ownerTeacherId && String(newGroup.ownerTeacherId) !== String(teacherId)) {
+      return res.status(409).json(errorResponse("GROUP_OWNED", "Selected group already has an owner"));
+    }
+
+    if (currentGroup && currentGroupId !== String(newGroup._id)) {
+      currentGroup.ownerTeacherId = null;
+      await currentGroup.save();
+      await Student.updateMany(
+        { schoolId, groupId: currentGroup._id },
+        { $set: { assignedTeacherId: null } },
+      );
+    }
+
+    newGroup.ownerTeacherId = teacherId;
+    await newGroup.save();
+
+    await Student.updateMany(
+      { schoolId, groupId: newGroup._id },
+      { $set: { assignedTeacherId: teacherId } },
+    );
+
+    const ownedGroup = await Group.findOne({ schoolId, ownerTeacherId: teacherId }).lean();
+    return res.json(successResponse(mapTeacherWithGroup(teacher, ownedGroup)));
+  } catch (err) {
+    if (err && err.code === 11000) {
+      return res.status(409).json(errorResponse("GROUP_OWNERSHIP_CONFLICT", "Teacher already owns another group"));
+    }
+    return res.status(500).json(errorResponse("SERVER_ERROR", "Could not reassign teacher group"));
+  }
+};
+
 exports.listGroups = async (req, res) => {
   try {
     const groups = await Group.find({ schoolId: req.auth.schoolId })

@@ -126,4 +126,76 @@ describe("Group ownership student access", () => {
     const updatedGroup = await Group.findById(targetGroup._id).lean();
     expect(String(updatedGroup.ownerTeacherId)).toBe(String(teacherTwo._id));
   });
+
+  test("admin can reassign and unassign teacher owned groups", async () => {
+    const fx = await createFixture("GOB");
+
+    const groupsRes = await request(app)
+      .get("/api/admin/groups")
+      .set("Authorization", `Bearer ${fx.adminToken}`);
+
+    expect(groupsRes.status).toBe(200);
+
+    const y7a = groupsRes.body.data.find((group) => group.code === "Y7A");
+    const y7b = groupsRes.body.data.find((group) => group.code === "Y7B");
+
+    const createTeacher = await request(app)
+      .post("/api/admin/teachers")
+      .set("Authorization", `Bearer ${fx.adminToken}`)
+      .send({
+        name: "Teacher Reassign",
+        email: "teacher-reassign@test.com",
+        password: "password123",
+        groupId: y7a._id,
+      });
+
+    expect(createTeacher.status).toBe(201);
+
+    const secondTeacher = await request(app)
+      .post("/api/admin/teachers")
+      .set("Authorization", `Bearer ${fx.adminToken}`)
+      .send({
+        name: "Teacher Two",
+        email: "teacher-two-reassign@test.com",
+        password: "password123",
+        groupId: y7b._id,
+      });
+
+    expect(secondTeacher.status).toBe(201);
+
+    const conflict = await request(app)
+      .patch(`/api/admin/teachers/${createTeacher.body.data.id}/reassign-group`)
+      .set("Authorization", `Bearer ${fx.adminToken}`)
+      .send({ groupId: y7b._id });
+
+    expect(conflict.status).toBe(409);
+
+    const y7c = groupsRes.body.data.find((group) => group.code === "Y7C");
+
+    const reassign = await request(app)
+      .patch(`/api/admin/teachers/${createTeacher.body.data.id}/reassign-group`)
+      .set("Authorization", `Bearer ${fx.adminToken}`)
+      .send({ groupId: y7c._id });
+
+    expect(reassign.status).toBe(200);
+    expect(reassign.body.data.ownedGroup.id).toBe(String(y7c._id));
+
+    const oldGroup = await Group.findById(y7a._id).lean();
+    const newGroup = await Group.findById(y7c._id).lean();
+
+    expect(oldGroup.ownerTeacherId).toBeNull();
+    expect(String(newGroup.ownerTeacherId)).toBe(String(createTeacher.body.data.id));
+
+    const unassign = await request(app)
+      .patch(`/api/admin/teachers/${createTeacher.body.data.id}/reassign-group`)
+      .set("Authorization", `Bearer ${fx.adminToken}`)
+      .send({ groupId: null });
+
+    expect(unassign.status).toBe(200);
+    expect(unassign.body.data.ownedGroup).toBeNull();
+
+    const unassignedGroup = await Group.findById(y7c._id).lean();
+    expect(unassignedGroup.ownerTeacherId).toBeNull();
+  });
+
 });

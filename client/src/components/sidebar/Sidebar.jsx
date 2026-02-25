@@ -1,6 +1,7 @@
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import "./sidebar.styles.scss";
+import { Link } from "react-router-dom";
 
 const Sidebar = () => {
   const { role } = useAuth();
@@ -27,7 +28,9 @@ const Sidebar = () => {
   return (
     <aside className="sidebar" id="app-sidebar" aria-label="Sidebar navigation">
       <div className="sidebar-top">
-        <div className="sidebar-brand">DetentionDesk</div>
+        <div className="sidebar-brand">
+          <Link to="/">DetentionDesk</Link>
+        </div>
 
         <button
           className="sidebar-close"

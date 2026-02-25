@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useCallback, useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 import Modal from "../../components/modal/Modal";
 import { useAuth } from "../../context/AuthContext";
 import { apiRequest } from "../../services/api";
@@ -128,7 +128,10 @@ const AdminStudentsPage = () => {
           {students.map((student) => (
             <tr key={student._id}>
               <td>
-                {student.firstName} {student.lastName}
+                <Link to={`/admin/students/${student._id}`}>
+                  {" "}
+                  {student.firstName} {student.lastName}{" "}
+                </Link>
               </td>
               <td>{student.admissionNumber}</td>
               <td>

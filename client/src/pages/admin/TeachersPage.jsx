@@ -1,22 +1,33 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Modal from "../../components/modal/Modal";
 import { useAuth } from "../../context/AuthContext";
 import { apiRequest } from "../../services/api";
+import { fetchAdminGroups } from "../../services/groups.service";
 import "./teachers-page.styles.scss";
 
 const AdminTeachersPage = () => {
   const { token } = useAuth();
   const [teachers, setTeachers] = useState([]);
+  const [groups, setGroups] = useState([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ name: "", email: "", password: "" });
+  const [form, setForm] = useState({ name: "", email: "", password: "", groupId: "" });
+
+  const unownedGroups = useMemo(
+    () => groups.filter((group) => !group.ownerTeacherId),
+    [groups],
+  );
 
   const loadTeachers = useCallback(async () => {
     setLoading(true);
     try {
-      const payload = await apiRequest({ path: "/api/admin/teachers", token });
-      setTeachers(payload.data || []);
+      const [teacherPayload, groupItems] = await Promise.all([
+        apiRequest({ path: "/api/admin/teachers", token }),
+        fetchAdminGroups({ token }),
+      ]);
+      setTeachers(teacherPayload.data || []);
+      setGroups(groupItems || []);
       setError("");
     } catch (requestError) {
       setError(requestError.message);
@@ -50,7 +61,7 @@ const AdminTeachersPage = () => {
       body: form,
     });
     setOpen(false);
-    setForm({ name: "", email: "", password: "" });
+    setForm({ name: "", email: "", password: "", groupId: "" });
     loadTeachers();
   };
 
@@ -79,6 +90,7 @@ const AdminTeachersPage = () => {
             <tr>
               <th>Name</th>
               <th>Email</th>
+              <th>Owned Group</th>
               <th>Status</th>
               <th>Actions</th>
             </tr>
@@ -88,6 +100,7 @@ const AdminTeachersPage = () => {
               <tr key={teacher._id || teacher.id}>
                 <td>{teacher.name}</td>
                 <td>{teacher.email}</td>
+                <td>{teacher.ownedGroup?.label || "Unassigned"}</td>
                 <td className={`status-${teacher.status}`}>{teacher.status}</td>
                 <td>
                   <button onClick={() => toggleStatus(teacher)} type="button">
@@ -127,6 +140,18 @@ const AdminTeachersPage = () => {
               type="password"
               value={form.password}
             />
+            <select
+              onChange={(e) => setForm((v) => ({ ...v, groupId: e.target.value }))}
+              required
+              value={form.groupId}
+            >
+              <option value="">Assign Group</option>
+              {unownedGroups.map((group) => (
+                <option key={group.id} value={group.id}>
+                  {group.label}
+                </option>
+              ))}
+            </select>
             <button type="submit">Create Account</button>
           </form>
         </Modal>

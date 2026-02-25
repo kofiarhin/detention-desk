@@ -6,6 +6,7 @@ const School = require("../models/School");
 const SchoolPolicy = require("../models/SchoolPolicy");
 const User = require("../models/User");
 const Student = require("../models/Student");
+const Group = require("../models/Group");
 const Detention = require("../models/Detention");
 const ParentStudentLink = require("../models/ParentStudentLink");
 const Category = require("../models/Category");
@@ -13,6 +14,7 @@ const Incident = require("../models/Incident");
 const Reward = require("../models/Reward");
 const Note = require("../models/Note");
 const DetentionOffset = require("../models/DetentionOffset");
+const { ensureSchoolGroups } = require("../services/groupService");
 
 const modelsInResetOrder = [
   DetentionOffset,
@@ -22,6 +24,7 @@ const modelsInResetOrder = [
   ParentStudentLink,
   Detention,
   Student,
+  Group,
   User,
   Category,
   SchoolPolicy,
@@ -57,6 +60,8 @@ const seedDatabase = async () => {
     rewardOffsetMinutes: 5,
   });
 
+  await ensureSchoolGroups({ schoolId: school._id });
+
   const [adminPasswordHash, teacherPasswordHash, parentPasswordHash] = await Promise.all([
     User.hashPassword("AdminPass123!"),
     User.hashPassword("TeacherPass123!"),
@@ -81,6 +86,8 @@ const seedDatabase = async () => {
     status: "active",
   });
 
+  const defaultGroup = await Group.findOne({ schoolId: school._id, code: "Y8A" });
+
   const parent = await User.create({
     schoolId: school._id,
     name: "Parent User",
@@ -91,8 +98,14 @@ const seedDatabase = async () => {
     mustChangePassword: false,
   });
 
+  if (defaultGroup) {
+    defaultGroup.ownerTeacherId = teacher._id;
+    await defaultGroup.save();
+  }
+
   const student = await Student.create({
     schoolId: school._id,
+    groupId: defaultGroup?._id,
     assignedTeacherId: teacher._id,
     firstName: "Jordan",
     lastName: "Miles",

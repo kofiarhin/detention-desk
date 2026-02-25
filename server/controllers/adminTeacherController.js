@@ -1,16 +1,48 @@
+const mongoose = require("mongoose");
+
+const Group = require("../models/Group");
 const User = require("../models/User");
 const Student = require("../models/Student");
 const { successResponse, errorResponse } = require("../utils/response");
 const { parseListQuery, buildMeta } = require("../services/queryService");
 
+const teacherProjection = { passwordHash: 0 };
+
+const mapTeacherWithGroup = (teacher, group) => ({
+  ...teacher,
+  ownedGroup: group
+    ? {
+      id: String(group._id),
+      code: group.code,
+      label: group.label,
+      year: group.year,
+      form: group.form,
+    }
+    : null,
+});
+
 exports.createTeacher = async (req, res) => {
   try {
     const schoolId = req.auth.schoolId;
-    const { name, email, password } = req.body || {};
+    const { name, email, password, groupId } = req.body || {};
 
     if (!name) return res.status(400).json(errorResponse("VALIDATION_ERROR", "name is required"));
     if (!email) return res.status(400).json(errorResponse("VALIDATION_ERROR", "email is required"));
     if (!password) return res.status(400).json(errorResponse("VALIDATION_ERROR", "password is required"));
+    if (!groupId) return res.status(400).json(errorResponse("VALIDATION_ERROR", "groupId is required"));
+    if (!mongoose.Types.ObjectId.isValid(groupId)) {
+      return res.status(400).json(errorResponse("VALIDATION_ERROR", "groupId is invalid"));
+    }
+
+    const group = await Group.findOne({ _id: groupId, schoolId });
+
+    if (!group) {
+      return res.status(400).json(errorResponse("VALIDATION_ERROR", "groupId must belong to the active school"));
+    }
+
+    if (group.ownerTeacherId) {
+      return res.status(409).json(errorResponse("GROUP_OWNED", "Selected group already has an owner"));
+    }
 
     const passwordHash = await User.hashPassword(password);
     const teacher = await User.create({
@@ -22,12 +54,20 @@ exports.createTeacher = async (req, res) => {
       status: "active",
     });
 
+    group.ownerTeacherId = teacher._id;
+    await group.save();
+
     return res.status(201).json(successResponse({
       id: String(teacher._id),
       name: teacher.name,
       email: teacher.email,
       role: teacher.role,
       status: teacher.status,
+      ownedGroup: {
+        id: String(group._id),
+        code: group.code,
+        label: group.label,
+      },
     }));
   } catch (err) {
     if (err && err.code === 11000) {
@@ -41,12 +81,21 @@ exports.listTeachers = async (req, res) => {
   try {
     const { page, limit, skip } = parseListQuery(req.query || {});
     const filter = { schoolId: req.auth.schoolId, role: "teacher" };
-    const [items, total] = await Promise.all([
-      User.find(filter, { passwordHash: 0 }).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+    const [items, total, groups] = await Promise.all([
+      User.find(filter, teacherProjection).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
       User.countDocuments(filter),
+      Group.find({ schoolId: req.auth.schoolId, ownerTeacherId: { $ne: null } }).lean(),
     ]);
 
-    return res.json(successResponse(items, buildMeta({ page, limit, total })));
+    const groupByTeacherId = new Map(
+      groups
+        .filter((item) => item.ownerTeacherId)
+        .map((group) => [String(group.ownerTeacherId), group]),
+    );
+
+    const payload = items.map((teacher) => mapTeacherWithGroup(teacher, groupByTeacherId.get(String(teacher._id))));
+
+    return res.json(successResponse(payload, buildMeta({ page, limit, total })));
   } catch (err) {
     return res.status(500).json(errorResponse("SERVER_ERROR", "Could not load teachers"));
   }
@@ -79,38 +128,74 @@ exports.reactivateTeacher = async (req, res) => {
   }
 };
 
-exports.reassignStudent = async (req, res) => {
+exports.listGroups = async (req, res) => {
+  try {
+    const groups = await Group.find({ schoolId: req.auth.schoolId })
+      .populate("ownerTeacherId", "name email status role")
+      .sort({ year: 1, form: 1 })
+      .lean();
+
+    return res.json(successResponse(groups));
+  } catch (err) {
+    return res.status(500).json(errorResponse("SERVER_ERROR", "Could not load groups"));
+  }
+};
+
+exports.assignGroupOwner = async (req, res) => {
   try {
     const schoolId = req.auth.schoolId;
-    const { assignedTeacherId } = req.body || {};
+    const { ownerTeacherId } = req.body || {};
 
-    if (!assignedTeacherId) {
-      return res.status(400).json(errorResponse("VALIDATION_ERROR", "assignedTeacherId is required"));
+    const group = await Group.findOne({ _id: req.params.id, schoolId });
+    if (!group) return res.status(404).json(errorResponse("NOT_FOUND", "Group not found"));
+
+    let nextOwnerId = null;
+
+    if (ownerTeacherId !== null && ownerTeacherId !== undefined && ownerTeacherId !== "") {
+      if (!mongoose.Types.ObjectId.isValid(ownerTeacherId)) {
+        return res.status(400).json(errorResponse("VALIDATION_ERROR", "ownerTeacherId is invalid"));
+      }
+
+      const teacher = await User.findOne({
+        _id: ownerTeacherId,
+        schoolId,
+        role: "teacher",
+      }).lean();
+
+      if (!teacher) {
+        return res.status(400).json(errorResponse("VALIDATION_ERROR", "ownerTeacherId must be a tenant teacher"));
+      }
+
+      const existingOwnership = await Group.findOne({
+        schoolId,
+        ownerTeacherId,
+        _id: { $ne: group._id },
+      }).lean();
+
+      if (existingOwnership) {
+        return res.status(409).json(errorResponse("GROUP_OWNERSHIP_CONFLICT", "Teacher already owns another group"));
+      }
+
+      nextOwnerId = teacher._id;
     }
 
-    const student = await Student.findOne({ _id: req.params.id, schoolId });
-    if (!student) return res.status(404).json(errorResponse("NOT_FOUND", "Student not found"));
+    group.ownerTeacherId = nextOwnerId;
+    await group.save();
 
-    const teacher = await User.findOne({
-      _id: assignedTeacherId,
-      schoolId,
-      role: "teacher",
-    }).lean();
+    await Student.updateMany(
+      { schoolId, groupId: group._id },
+      { $set: { assignedTeacherId: nextOwnerId } },
+    );
 
-    if (!teacher) {
-      return res.status(400).json(errorResponse("VALIDATION_ERROR", "assignedTeacherId must be a tenant teacher"));
-    }
+    const updated = await Group.findById(group._id)
+      .populate("ownerTeacherId", "name email status role")
+      .lean();
 
-    student.assignedTeacherId = teacher._id;
-    student.updatedBy = req.auth.userId;
-    await student.save();
-
-    return res.json(successResponse({
-      id: String(student._id),
-      assignedTeacherId: String(student.assignedTeacherId),
-      updatedBy: String(student.updatedBy),
-    }));
+    return res.json(successResponse(updated));
   } catch (err) {
-    return res.status(500).json(errorResponse("SERVER_ERROR", "Could not reassign student"));
+    if (err && err.code === 11000) {
+      return res.status(409).json(errorResponse("GROUP_OWNERSHIP_CONFLICT", "Teacher already owns another group"));
+    }
+    return res.status(500).json(errorResponse("SERVER_ERROR", "Could not update group owner"));
   }
 };

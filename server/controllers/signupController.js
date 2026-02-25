@@ -6,6 +6,7 @@ const { successResponse, errorResponse } = require("../utils/response");
 const { signToken } = require("../services/tokenService");
 const { seedDefaultCategories } = require("../services/seedService");
 const { generateSchoolCode } = require("../utils/generateSchoolCode");
+const { ensureSchoolGroups } = require("../services/groupService");
 
 const MAX_SCHOOL_CODE_ATTEMPTS = 15;
 
@@ -74,6 +75,7 @@ exports.signupSchool = async (req, res) => {
     });
 
     await seedDefaultCategories({ schoolId: school._id });
+    await ensureSchoolGroups({ schoolId: school._id });
 
     const token = signToken({
       userId: adminUser._id,

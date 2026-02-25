@@ -1,18 +1,17 @@
 /* eslint-disable react-hooks/set-state-in-effect */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import Modal from "../../components/modal/Modal";
 import { useAuth } from "../../context/AuthContext";
 import { apiRequest } from "../../services/api";
+import { assignGroupOwner, fetchAdminGroups } from "../../services/groups.service";
 import "./students-page.styles.scss";
 
 const emptyForm = {
   firstName: "",
   lastName: "",
   admissionNumber: "",
-  yearGroup: "",
-  form: "",
-  assignedTeacherId: "",
+  groupId: "",
 };
 
 const AdminStudentsPage = () => {
@@ -20,13 +19,25 @@ const AdminStudentsPage = () => {
   const [searchParams] = useSearchParams();
   const [students, setStudents] = useState([]);
   const [teachers, setTeachers] = useState([]);
+  const [groups, setGroups] = useState([]);
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const [meta, setMeta] = useState({ pages: 1 });
   const [form, setForm] = useState(emptyForm);
-  const [selected, setSelected] = useState(null);
+  const [selectedGroup, setSelectedGroup] = useState(null);
   const [openCreate, setOpenCreate] = useState(false);
   const [openReassign, setOpenReassign] = useState(false);
+
+  const teachersById = useMemo(
+    () => new Map(teachers.map((teacher) => [teacher._id || teacher.id, teacher])),
+    [teachers],
+  );
+
+  const resolveGroupId = (groupValue) => {
+    if (!groupValue) return "";
+    if (typeof groupValue === "string") return groupValue;
+    return groupValue._id || groupValue.id || "";
+  };
 
   const loadTeachers = useCallback(async () => {
     const payload = await apiRequest({
@@ -34,6 +45,11 @@ const AdminStudentsPage = () => {
       token,
     });
     setTeachers(payload.data || []);
+  }, [token]);
+
+  const loadGroups = useCallback(async () => {
+    const payload = await fetchAdminGroups({ token });
+    setGroups(payload || []);
   }, [token]);
 
   const loadStudents = useCallback(async () => {
@@ -56,7 +72,8 @@ const AdminStudentsPage = () => {
 
   useEffect(() => {
     void loadTeachers();
-  }, [loadTeachers]);
+    void loadGroups();
+  }, [loadTeachers, loadGroups]);
 
   useEffect(() => {
     void loadStudents();
@@ -85,15 +102,18 @@ const AdminStudentsPage = () => {
     loadStudents();
   };
 
-  const reassignStudent = async (teacherId) => {
-    await apiRequest({
-      path: `/api/admin/students/${selected._id}/reassign`,
-      method: "PATCH",
+  const reassignGroupOwner = async (teacherId) => {
+    if (!selectedGroup) return;
+
+    await assignGroupOwner({
       token,
-      body: { assignedTeacherId: teacherId },
+      groupId: selectedGroup._id || selectedGroup.id,
+      ownerTeacherId: teacherId || null,
     });
+
     setOpenReassign(false);
-    setSelected(null);
+    setSelectedGroup(null);
+    loadGroups();
     loadStudents();
   };
 
@@ -118,52 +138,59 @@ const AdminStudentsPage = () => {
           <tr>
             <th>Name</th>
             <th>Admission</th>
-            <th>Year</th>
-            <th>Form</th>
+            <th>Group</th>
+            <th>Owner</th>
             <th>Status</th>
             <th>Actions</th>
           </tr>
         </thead>
         <tbody>
-          {students.map((student) => (
-            <tr key={student._id}>
-              <td>
-                <Link to={`/admin/students/${student._id}`}>
-                  {" "}
-                  {student.firstName} {student.lastName}{" "}
-                </Link>
-              </td>
-              <td>{student.admissionNumber}</td>
-              <td>
-                <input
-                  defaultValue={student.yearGroup}
-                  onBlur={(e) =>
-                    updateStudent({ ...student, yearGroup: e.target.value })
-                  }
-                />
-              </td>
-              <td>
-                <input
-                  defaultValue={student.form}
-                  onBlur={(e) =>
-                    updateStudent({ ...student, form: e.target.value })
-                  }
-                />
-              </td>
-              <td>{student.status}</td>
-              <td>
-                <button
-                  onClick={() => {
-                    setSelected(student);
-                    setOpenReassign(true);
-                  }}
-                  type="button"
-                >
-                  Reassign
-                </button>
-              </td>
-            </tr>
-          ))}
+          {students.map((student) => {
+            const studentGroupId = resolveGroupId(student.groupId);
+            const selected = groups.find((group) => group.id === studentGroupId);
+            const ownerId = selected?.ownerTeacherId?._id || selected?.ownerTeacherId;
+
+            return (
+              <tr key={student._id}>
+                <td>
+                  <Link to={`/admin/students/${student._id}`}>
+                    {student.firstName} {student.lastName}
+                  </Link>
+                </td>
+                <td>{student.admissionNumber}</td>
+                <td>
+                  <select
+                    defaultValue={studentGroupId || ""}
+                    onChange={(e) =>
+                      updateStudent({ ...student, groupId: e.target.value })
+                    }
+                  >
+                    <option value="" disabled>
+                      Select group
+                    </option>
+                    {groups.map((group) => (
+                      <option key={group.id} value={group.id}>
+                        {group.label}
+                      </option>
+                    ))}
+                  </select>
+                </td>
+                <td>{teachersById.get(ownerId)?.name || selected?.ownerTeacherId?.name || "Unassigned"}</td>
+                <td>{student.status}</td>
+                <td>
+                  <button
+                    onClick={() => {
+                      setSelectedGroup(selected || student.group || { _id: studentGroupId });
+                      setOpenReassign(true);
+                    }}
+                    type="button"
+                  >
+                    Reassign Group Owner
+                  </button>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
       <div>
@@ -175,8 +202,7 @@ const AdminStudentsPage = () => {
           Prev
         </button>
         <span>
-          {" "}
-          Page {page} of {meta.pages || 1}{" "}
+          Page {page} of {meta.pages || 1}
         </span>
         <button
           disabled={page >= (meta.pages || 1)}
@@ -189,54 +215,55 @@ const AdminStudentsPage = () => {
       {openCreate ? (
         <Modal onClose={() => setOpenCreate(false)} title="Create Student">
           <form className="admin-form" onSubmit={createStudent}>
-            {Object.keys(emptyForm).map((key) =>
-              key === "assignedTeacherId" ? (
-                <select
-                  key={key}
-                  onChange={(e) =>
-                    setForm((v) => ({
-                      ...v,
-                      assignedTeacherId: e.target.value,
-                    }))
-                  }
-                  required
-                  value={form.assignedTeacherId}
-                >
-                  <option value="">Assigned Teacher</option>
-                  {teachers.map((teacher) => (
-                    <option
-                      key={teacher._id || teacher.id}
-                      value={teacher._id || teacher.id}
-                    >
-                      {teacher.name}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <input
-                  key={key}
-                  onChange={(e) =>
-                    setForm((v) => ({ ...v, [key]: e.target.value }))
-                  }
-                  placeholder={key}
-                  required
-                  value={form[key]}
-                />
-              ),
-            )}
+            <input
+              onChange={(e) =>
+                setForm((v) => ({ ...v, firstName: e.target.value }))
+              }
+              placeholder="firstName"
+              required
+              value={form.firstName}
+            />
+            <input
+              onChange={(e) =>
+                setForm((v) => ({ ...v, lastName: e.target.value }))
+              }
+              placeholder="lastName"
+              required
+              value={form.lastName}
+            />
+            <input
+              onChange={(e) =>
+                setForm((v) => ({ ...v, admissionNumber: e.target.value }))
+              }
+              placeholder="admissionNumber"
+              required
+              value={form.admissionNumber}
+            />
+            <select
+              onChange={(e) =>
+                setForm((v) => ({ ...v, groupId: e.target.value }))
+              }
+              required
+              value={form.groupId}
+            >
+              <option value="">Group</option>
+              {groups.map((group) => (
+                <option key={group.id} value={group.id}>
+                  {group.label}
+                </option>
+              ))}
+            </select>
             <button type="submit">Create</button>
           </form>
         </Modal>
       ) : null}
-      {openReassign && selected ? (
-        <Modal onClose={() => setOpenReassign(false)} title="Reassign Student">
+      {openReassign && selectedGroup ? (
+        <Modal onClose={() => setOpenReassign(false)} title="Reassign Group Owner">
           <select
-            defaultValue=""
-            onChange={(e) => reassignStudent(e.target.value)}
+            defaultValue={selectedGroup.ownerTeacherId?._id || selectedGroup.ownerTeacherId || ""}
+            onChange={(e) => reassignGroupOwner(e.target.value)}
           >
-            <option value="" disabled>
-              Select teacher
-            </option>
+            <option value="">Unassigned</option>
             {teachers.map((teacher) => (
               <option
                 key={teacher._id || teacher.id}

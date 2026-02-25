@@ -9,7 +9,8 @@ const {
   listTeachers,
   deactivateTeacher,
   reactivateTeacher,
-  reassignStudent,
+  listGroups,
+  assignGroupOwner,
 } = require("../controllers/adminTeacherController");
 
 router.use(requireAuth, requireTenant, requireSchoolAdmin);
@@ -23,6 +24,7 @@ router.get("/teachers", listTeachers);
 router.patch("/teachers/:id/deactivate", deactivateTeacher);
 router.patch("/teachers/:id/reactivate", reactivateTeacher);
 
-router.patch("/students/:id/reassign", reassignStudent);
+router.get("/groups", listGroups);
+router.patch("/groups/:id/assign-owner", assignGroupOwner);
 
 module.exports = router;

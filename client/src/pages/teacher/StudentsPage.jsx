@@ -61,7 +61,7 @@ const TeacherStudentsPage = () => {
           <input
             className="teacher-students-page__search-input"
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by name or form…"
+            placeholder="Search by name or group…"
             value={query}
           />
           <button className="teacher-students-page__search-btn" type="submit">
@@ -85,11 +85,11 @@ const TeacherStudentsPage = () => {
                     {student.firstName} {student.lastName}
                   </span>
                   <span className="teacher-students-page__badge">
-                    Year {student.yearGroup || "N/A"}
+                    Group
                   </span>
                 </div>
                 <div className="teacher-students-page__meta">
-                  Form {student.form || "N/A"}
+                  {student.group?.label || student.groupLabel || "Unassigned group"}
                 </div>
               </Link>
             </li>

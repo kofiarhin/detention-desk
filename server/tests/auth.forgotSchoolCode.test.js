@@ -1,5 +1,5 @@
 const request = require("supertest");
-const { buildApp } = require("../app");
+const { buildApp } = require("../app"); //will remove this later
 
 describe("POST /api/auth/forgot-school-code", () => {
   const app = buildApp();

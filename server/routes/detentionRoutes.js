@@ -6,6 +6,7 @@ const { requireRole } = require("../middleware/requireRole");
 const { requireTeacherPermission } = require("../middleware/requireTeacherPermission");
 const {
   listDetentions,
+  getCommandCenter,
   getDetention,
   updateDetention,
   serveDetention,
@@ -18,6 +19,7 @@ const {
 router.use(requireAuth, requireTenant, requireRole("schoolAdmin", "teacher"));
 
 router.get("/", listDetentions);
+router.get("/command-center", getCommandCenter);
 
 router.post("/bulk/serve", requireRole("schoolAdmin"), bulkServeDetentions);
 router.post("/bulk/void", requireRole("schoolAdmin"), bulkVoidDetentions);

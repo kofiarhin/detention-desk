@@ -1,0 +1,115 @@
+.teacher-details-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.teacher-details-page-header-row {
+  margin-bottom: 1rem;
+}
+
+.teacher-details-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.teacher-details-page-header h1 {
+  margin: 0;
+}
+
+.teacher-details-page-header p {
+  margin: 0.25rem 0 0;
+  color: #cbd5e1;
+}
+
+.teacher-details-page-status-badge {
+  border-radius: 999px;
+  padding: 0.25rem 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+}
+
+.teacher-details-page-status-active {
+  background: #14532d;
+  color: #bbf7d0;
+}
+
+.teacher-details-page-status-inactive {
+  background: #7f1d1d;
+  color: #fecaca;
+}
+
+.teacher-details-page-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.teacher-details-page-card {
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 1rem;
+  background: #111827;
+}
+
+.teacher-details-page-card h2 {
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+}
+
+.teacher-details-page-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.teacher-details-page-form input,
+.teacher-details-page-card select {
+  width: 100%;
+  padding: 0.6rem;
+  border-radius: 4px;
+  border: 1px solid #475569;
+  background: #1e293b;
+  color: #f8fafc;
+}
+
+.teacher-details-page-card button {
+  margin-top: 0.75rem;
+  padding: 0.65rem 0.9rem;
+  border: none;
+  border-radius: 4px;
+  background: #4f46e5;
+  color: #fff;
+  cursor: pointer;
+}
+
+.teacher-details-page-card button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.teacher-details-page-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  font-size: 0.95rem;
+}
+
+.teacher-details-page-feedback {
+  margin: 0.75rem 0;
+  color: #4ade80;
+}
+
+.teacher-details-page-error {
+  margin: 0.75rem 0;
+  color: #f87171;
+}
+
+.teacher-details-page-status {
+  color: #cbd5e1;
+}

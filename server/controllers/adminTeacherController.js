@@ -8,6 +8,16 @@ const { parseListQuery, buildMeta } = require("../services/queryService");
 
 const teacherProjection = { passwordHash: 0 };
 
+const toTeacherPayload = (teacher) => ({
+  id: String(teacher._id),
+  name: teacher.name,
+  email: teacher.email,
+  role: teacher.role,
+  status: teacher.status,
+  createdAt: teacher.createdAt,
+  updatedAt: teacher.updatedAt,
+});
+
 const mapTeacherWithGroup = (teacher, group) => ({
   ...teacher,
   ownedGroup: group
@@ -101,6 +111,132 @@ exports.listTeachers = async (req, res) => {
   }
 };
 
+exports.getTeacherDetails = async (req, res) => {
+  try {
+    const schoolId = req.auth.schoolId;
+    const { teacherId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(teacherId)) {
+      return res.status(400).json(errorResponse("VALIDATION_ERROR", "teacherId is invalid"));
+    }
+
+    const teacher = await User.findOne({
+      _id: teacherId,
+      schoolId,
+      role: "teacher",
+    }, teacherProjection).lean();
+
+    if (!teacher) {
+      return res.status(404).json(errorResponse("NOT_FOUND", "Teacher not found"));
+    }
+
+    const group = await Group.findOne({ schoolId, ownerTeacherId: teacherId }).lean();
+    const studentCount = group
+      ? await Student.countDocuments({ schoolId, groupId: group._id })
+      : 0;
+
+    return res.json(successResponse({
+      ...toTeacherPayload(teacher),
+      ownedGroup: group
+        ? {
+          id: String(group._id),
+          code: group.code,
+          label: group.label,
+          year: group.year,
+          form: group.form,
+        }
+        : null,
+      studentCount,
+    }));
+  } catch (err) {
+    return res.status(500).json(errorResponse("SERVER_ERROR", "Could not load teacher details"));
+  }
+};
+
+exports.updateTeacher = async (req, res) => {
+  try {
+    const schoolId = req.auth.schoolId;
+    const { teacherId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(teacherId)) {
+      return res.status(400).json(errorResponse("VALIDATION_ERROR", "teacherId is invalid"));
+    }
+
+    const { name, email } = req.body || {};
+    const updates = {};
+
+    if (name !== undefined) {
+      const nextName = String(name || "").trim();
+      if (!nextName) {
+        return res.status(400).json(errorResponse("VALIDATION_ERROR", "name is required"));
+      }
+      updates.name = nextName;
+    }
+
+    if (email !== undefined) {
+      const nextEmail = String(email || "").trim().toLowerCase();
+      if (!nextEmail) {
+        return res.status(400).json(errorResponse("VALIDATION_ERROR", "email is required"));
+      }
+      updates.email = nextEmail;
+    }
+
+    if (!Object.keys(updates).length) {
+      return res.status(400).json(errorResponse("VALIDATION_ERROR", "No valid fields to update"));
+    }
+
+    const teacher = await User.findOne({
+      _id: teacherId,
+      schoolId,
+      role: "teacher",
+    });
+
+    if (!teacher) {
+      return res.status(404).json(errorResponse("NOT_FOUND", "Teacher not found"));
+    }
+
+    Object.assign(teacher, updates);
+    await teacher.save();
+
+    return res.json(successResponse(toTeacherPayload(teacher)));
+  } catch (err) {
+    if (err && err.code === 11000) {
+      return res.status(409).json(errorResponse("DUPLICATE", "Email already exists"));
+    }
+    return res.status(500).json(errorResponse("SERVER_ERROR", "Could not update teacher"));
+  }
+};
+
+exports.updateTeacherStatus = async (req, res) => {
+  try {
+    const schoolId = req.auth.schoolId;
+    const { teacherId } = req.params;
+    const { isActive } = req.body || {};
+
+    if (!mongoose.Types.ObjectId.isValid(teacherId)) {
+      return res.status(400).json(errorResponse("VALIDATION_ERROR", "teacherId is invalid"));
+    }
+
+    if (typeof isActive !== "boolean") {
+      return res.status(400).json(errorResponse("VALIDATION_ERROR", "isActive must be boolean"));
+    }
+
+    const teacher = await User.findOneAndUpdate(
+      { _id: teacherId, schoolId, role: "teacher" },
+      { $set: { status: isActive ? "active" : "inactive" } },
+      { new: true },
+    ).lean();
+
+    if (!teacher) {
+      return res.status(404).json(errorResponse("NOT_FOUND", "Teacher not found"));
+    }
+
+    return res.json(successResponse(toTeacherPayload(teacher)));
+  } catch (err) {
+    return res.status(500).json(errorResponse("SERVER_ERROR", "Could not update teacher status"));
+  }
+};
+
 async function setTeacherStatus(req, res, status) {
   const teacher = await User.findOneAndUpdate(
     { _id: req.params.id, schoolId: req.auth.schoolId, role: "teacher" },
@@ -128,11 +264,32 @@ exports.reactivateTeacher = async (req, res) => {
   }
 };
 
+
+const runWithTransactionFallback = async (operation) => {
+  const session = await mongoose.startSession();
+  try {
+    await session.withTransaction(async () => {
+      await operation(session);
+    });
+  } catch (err) {
+    const message = String(err?.message || "");
+    if (message.includes("Transaction numbers are only allowed") || message.includes("Transaction is not supported")) {
+      await operation(null);
+      return;
+    }
+    throw err;
+  } finally {
+    session.endSession();
+  }
+};
+
 exports.reassignTeacherGroup = async (req, res) => {
   try {
     const schoolId = req.auth.schoolId;
     const { teacherId } = req.params;
-    const { groupId } = req.body || {};
+    const { groupId, newGroupId, transferStudents } = req.body || {};
+    const requestedGroupId = newGroupId !== undefined ? newGroupId : groupId;
+    const shouldTransferStudents = transferStudents === true;
 
     if (!mongoose.Types.ObjectId.isValid(teacherId)) {
       return res.status(400).json(errorResponse("VALIDATION_ERROR", "teacherId is invalid"));
@@ -151,28 +308,31 @@ exports.reassignTeacherGroup = async (req, res) => {
     const currentGroup = await Group.findOne({ schoolId, ownerTeacherId: teacherId });
     const currentGroupId = currentGroup ? String(currentGroup._id) : null;
 
-    if (groupId === null) {
-      if (currentGroup) {
-        currentGroup.ownerTeacherId = null;
-        await currentGroup.save();
-        await Student.updateMany(
-          { schoolId, groupId: currentGroup._id },
-          { $set: { assignedTeacherId: null } },
-        );
-      }
+    if (requestedGroupId === null) {
+      await runWithTransactionFallback(async (session) => {
+        if (currentGroup) {
+          currentGroup.ownerTeacherId = null;
+          await currentGroup.save(session ? { session } : undefined);
+          await Student.updateMany(
+            { schoolId, groupId: currentGroup._id },
+            { $set: { assignedTeacherId: null } },
+            session ? { session } : undefined,
+          );
+        }
+      });
 
       return res.json(successResponse(mapTeacherWithGroup(teacher, null)));
     }
 
-    if (!groupId) {
-      return res.status(400).json(errorResponse("VALIDATION_ERROR", "groupId is required or null"));
+    if (!requestedGroupId) {
+      return res.status(400).json(errorResponse("VALIDATION_ERROR", "newGroupId is required"));
     }
 
-    if (!mongoose.Types.ObjectId.isValid(groupId)) {
-      return res.status(400).json(errorResponse("VALIDATION_ERROR", "groupId is invalid"));
+    if (!mongoose.Types.ObjectId.isValid(requestedGroupId)) {
+      return res.status(400).json(errorResponse("VALIDATION_ERROR", "newGroupId is invalid"));
     }
 
-    const newGroup = await Group.findOne({ _id: groupId, schoolId });
+    const newGroup = await Group.findOne({ _id: requestedGroupId, schoolId });
 
     if (!newGroup) {
       return res.status(404).json(errorResponse("NOT_FOUND", "Group not found"));
@@ -182,25 +342,45 @@ exports.reassignTeacherGroup = async (req, res) => {
       return res.status(409).json(errorResponse("GROUP_OWNED", "Selected group already has an owner"));
     }
 
-    if (currentGroup && currentGroupId !== String(newGroup._id)) {
-      currentGroup.ownerTeacherId = null;
-      await currentGroup.save();
+    await runWithTransactionFallback(async (session) => {
+      if (currentGroup && currentGroupId !== String(newGroup._id)) {
+        currentGroup.ownerTeacherId = null;
+        await currentGroup.save(session ? { session } : undefined);
+
+        if (shouldTransferStudents) {
+          await Student.updateMany(
+            { schoolId, groupId: currentGroup._id },
+            { $set: { groupId: newGroup._id, assignedTeacherId: teacherId } },
+            session ? { session } : undefined,
+          );
+        } else {
+          await Student.updateMany(
+            { schoolId, groupId: currentGroup._id },
+            { $set: { assignedTeacherId: null } },
+            session ? { session } : undefined,
+          );
+        }
+      }
+
+      newGroup.ownerTeacherId = teacherId;
+      await newGroup.save(session ? { session } : undefined);
+
       await Student.updateMany(
-        { schoolId, groupId: currentGroup._id },
-        { $set: { assignedTeacherId: null } },
+        { schoolId, groupId: newGroup._id },
+        { $set: { assignedTeacherId: teacherId } },
+        session ? { session } : undefined,
       );
-    }
-
-    newGroup.ownerTeacherId = teacherId;
-    await newGroup.save();
-
-    await Student.updateMany(
-      { schoolId, groupId: newGroup._id },
-      { $set: { assignedTeacherId: teacherId } },
-    );
+    });
 
     const ownedGroup = await Group.findOne({ schoolId, ownerTeacherId: teacherId }).lean();
-    return res.json(successResponse(mapTeacherWithGroup(teacher, ownedGroup)));
+    const studentCount = ownedGroup
+      ? await Student.countDocuments({ schoolId, groupId: ownedGroup._id })
+      : 0;
+
+    return res.json(successResponse({
+      ...mapTeacherWithGroup(teacher, ownedGroup),
+      studentCount,
+    }));
   } catch (err) {
     if (err && err.code === 11000) {
       return res.status(409).json(errorResponse("GROUP_OWNERSHIP_CONFLICT", "Teacher already owns another group"));

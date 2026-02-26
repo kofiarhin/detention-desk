@@ -15,6 +15,7 @@ import AdminDashboardPage from "./pages/admin/DashboardPage";
 import AdminDetentionsPage from "./pages/admin/DetentionsPage";
 import AdminStudentsPage from "./pages/admin/StudentsPage";
 import AdminTeachersPage from "./pages/admin/TeachersPage";
+import TeacherDetailsPage from "./pages/admin/TeacherDetailsPage";
 import AdminParentsPage from "./pages/admin/ParentsPage";
 import ParentChangePasswordPage from "./pages/parent/ChangePasswordPage";
 import ParentStudentDetailPage from "./pages/parent/StudentDetailPage";
@@ -51,6 +52,7 @@ const App = () => {
           <Route element={<RequireAuth allowedRoles={["schoolAdmin"]} />}>
             <Route element={<AdminDashboardPage />} path="/admin/dashboard" />
             <Route element={<AdminTeachersPage />} path="/admin/teachers" />
+            <Route element={<TeacherDetailsPage />} path="/admin/teachers/:teacherId" />
             <Route element={<AdminStudentsPage />} path="/admin/students" />
 
             {/* ✅ allow admin to view/manage a student profile (reuse teacher profile page) */}

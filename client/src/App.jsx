@@ -17,6 +17,7 @@ import AdminStudentsPage from "./pages/admin/StudentsPage";
 import AdminTeachersPage from "./pages/admin/TeachersPage";
 import TeacherDetailsPage from "./pages/admin/TeacherDetailsPage";
 import AdminParentsPage from "./pages/admin/ParentsPage";
+import ParentDetailsPage from "./pages/admin/ParentDetailsPage";
 import ParentChangePasswordPage from "./pages/parent/ChangePasswordPage";
 import ParentStudentDetailPage from "./pages/parent/StudentDetailPage";
 import ParentStudentsPage from "./pages/parent/StudentsPage";
@@ -63,6 +64,7 @@ const App = () => {
 
             <Route element={<AdminDetentionsPage />} path="/admin/detentions" />
             <Route element={<AdminParentsPage />} path="/admin/parents" />
+            <Route element={<ParentDetailsPage />} path="/admin/parents/:parentLinkId" />
           </Route>
 
           <Route element={<RequireAuth allowedRoles={["teacher"]} />}>

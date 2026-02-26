@@ -1,0 +1,128 @@
+.parent-details-page {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.parent-details-toprow {
+  margin-bottom: 1rem;
+}
+
+.parent-details-toprow a,
+.parent-details-toprow button {
+  background: transparent;
+  border: 0;
+  color: #60a5fa;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: none;
+}
+
+.parent-details-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.parent-details-header h1 {
+  margin: 0;
+}
+
+.parent-details-header p {
+  margin: 0.2rem 0 0;
+  color: #94a3b8;
+}
+
+.parent-details-badge {
+  text-transform: capitalize;
+  border-radius: 999px;
+  padding: 0.35rem 0.8rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.parent-details-badge-active {
+  background: #064e3b;
+  color: #6ee7b7;
+}
+
+.parent-details-badge-revoked {
+  background: #7f1d1d;
+  color: #fca5a5;
+}
+
+.parent-details-card {
+  background: #101216;
+  border: 1px solid #1f2937;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.parent-details-card h2 {
+  margin-top: 0;
+}
+
+.parent-details-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.8rem;
+}
+
+.parent-details-grid label {
+  display: block;
+  margin-bottom: 0.2rem;
+  color: #94a3b8;
+}
+
+.parent-details-grid p {
+  margin: 0;
+}
+
+.parent-details-form {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.parent-details-form input,
+.parent-details-form select,
+.parent-details-form button,
+.parent-details-card button {
+  border-radius: 6px;
+  border: 1px solid #334155;
+  background: #0b1220;
+  color: #f8fafc;
+  padding: 0.65rem 0.75rem;
+}
+
+.parent-details-form button,
+.parent-details-card button {
+  background: #2563eb;
+  border: none;
+  cursor: pointer;
+}
+
+.parent-details-form button:disabled,
+.parent-details-card button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.parent-details-feedback {
+  color: #10b981;
+}
+
+.parent-details-error {
+  color: #ef4444;
+}
+
+.parent-details-status {
+  color: #cbd5e1;
+}
+
+@media (min-width: 768px) {
+  .parent-details-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

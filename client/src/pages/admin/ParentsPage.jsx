@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import {
   createAdminParentLink,
@@ -27,6 +28,7 @@ const formatDate = (value) => {
 
 const AdminParentsPage = () => {
   const { token } = useAuth();
+  const navigate = useNavigate();
   const [students, setStudents] = useState([]);
   const [links, setLinks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -44,8 +46,8 @@ const AdminParentsPage = () => {
         listAdminStudents(token),
         listAdminParentLinks(token),
       ]);
-      setStudents(studentsPayload.data || []);
-      setLinks(linksPayload.data || []);
+      setStudents(studentsPayload || []);
+      setLinks(linksPayload || []);
       setError("");
     } catch (requestError) {
       setError(requestError.message || "Could not load parent links");
@@ -229,7 +231,13 @@ const AdminParentsPage = () => {
                   <td>{link.relationshipType || "-"}</td>
                   <td>{link.status || "-"}</td>
                   <td>{formatDate(link.createdAt)}</td>
-                  <td>
+                  <td className="admin-parents-link-actions">
+                    <button
+                      onClick={() => navigate(`/admin/parents/${link.id || link._id}`)}
+                      type="button"
+                    >
+                      View
+                    </button>
                     <button
                       disabled={link.status === "revoked"}
                       onClick={() => onRevoke(link.id || link._id)}

@@ -3,7 +3,15 @@ const router = require("express").Router();
 const { requireAuth } = require("../middleware/requireAuth");
 const { requireTenant } = require("../middleware/requireTenant");
 const { requireSchoolAdmin } = require("../middleware/requireRole");
-const { createParentAndLink, listParentLinks, revokeParentLink } = require("../controllers/adminParentController");
+const {
+  createParentAndLink,
+  listParentLinks,
+  revokeParentLink,
+  getParentLinkDetails,
+  updateParentProfile,
+  reassignParentLink,
+  updateParentLinkStatus,
+} = require("../controllers/adminParentController");
 const {
   createTeacher,
   listTeachers,
@@ -22,6 +30,10 @@ router.use(requireAuth, requireTenant, requireSchoolAdmin);
 router.post("/parents", createParentAndLink);
 router.get("/parent-links", listParentLinks);
 router.patch("/parent-links/:id/revoke", revokeParentLink);
+router.get("/parents/:parentLinkId", getParentLinkDetails);
+router.put("/parents/:parentLinkId", updateParentProfile);
+router.put("/parents/:parentLinkId/reassign", reassignParentLink);
+router.patch("/parents/:parentLinkId/status", updateParentLinkStatus);
 
 router.post("/teachers", createTeacher);
 router.get("/teachers", listTeachers);

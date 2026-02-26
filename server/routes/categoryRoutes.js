@@ -14,7 +14,6 @@ const {
 router.get(
   "/",
   requireAuth,
-  requireTenant,
   requireRole("schoolAdmin", "teacher"),
   listCategories,
 );

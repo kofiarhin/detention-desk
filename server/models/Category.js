@@ -38,4 +38,6 @@ CategorySchema.index(
   { unique: true },
 );
 
-module.exports = mongoose.model("Category", CategorySchema);
+// ✅ prevents OverwriteModelError (nodemon/tests/hot reload)
+module.exports =
+  mongoose.models.Category || mongoose.model("Category", CategorySchema);

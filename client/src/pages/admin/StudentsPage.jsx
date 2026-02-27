@@ -27,6 +27,9 @@ const AdminStudentsPage = () => {
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [openCreate, setOpenCreate] = useState(false);
   const [openReassign, setOpenReassign] = useState(false);
+  const [openDelete, setOpenDelete] = useState(false);
+  const [showInactive, setShowInactive] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState(null);
 
   const teachersById = useMemo(
     () => new Map(teachers.map((teacher) => [teacher._id || teacher.id, teacher])),
@@ -53,13 +56,14 @@ const AdminStudentsPage = () => {
   }, [token]);
 
   const loadStudents = useCallback(async () => {
+    const statusQuery = showInactive ? "" : "&status=active";
     const payload = await apiRequest({
-      path: `/api/students?page=${page}&q=${encodeURIComponent(query)}`,
+      path: `/api/students?page=${page}&q=${encodeURIComponent(query)}${statusQuery}`,
       token,
     });
     setStudents(payload.data || []);
     setMeta(payload.meta || { pages: 1 });
-  }, [page, query, token]);
+  }, [page, query, showInactive, token]);
 
   useEffect(() => {
     const q = (searchParams.get("q") || "").trim();
@@ -117,6 +121,20 @@ const AdminStudentsPage = () => {
     loadStudents();
   };
 
+  const deleteStudent = async () => {
+    if (!selectedStudent?._id) return;
+
+    await apiRequest({
+      path: `/api/students/${selectedStudent._id}`,
+      method: "DELETE",
+      token,
+    });
+
+    setOpenDelete(false);
+    setSelectedStudent(null);
+    loadStudents();
+  };
+
   return (
     <section className="app-page">
       <h1>Student Management</h1>
@@ -132,6 +150,18 @@ const AdminStudentsPage = () => {
         <button onClick={() => setOpenCreate(true)} type="button">
           Create Student
         </button>
+        <label className="admin-students-toggle" htmlFor="show-inactive">
+          <input
+            checked={showInactive}
+            id="show-inactive"
+            onChange={(event) => {
+              setShowInactive(event.target.checked);
+              setPage(1);
+            }}
+            type="checkbox"
+          />
+          <span>Show inactive</span>
+        </label>
       </div>
       <table className="admin-students-table">
         <thead>
@@ -151,7 +181,7 @@ const AdminStudentsPage = () => {
             const ownerId = selected?.ownerTeacherId?._id || selected?.ownerTeacherId;
 
             return (
-              <tr key={student._id}>
+              <tr className={student.status === "inactive" ? "inactive-row" : ""} key={student._id}>
                 <td>
                   <Link to={`/admin/students/${student._id}`}>
                     {student.firstName} {student.lastName}
@@ -161,6 +191,7 @@ const AdminStudentsPage = () => {
                 <td>
                   <select
                     defaultValue={studentGroupId || ""}
+                    disabled={student.status === "inactive"}
                     onChange={(e) =>
                       updateStudent({ ...student, groupId: e.target.value })
                     }
@@ -179,6 +210,7 @@ const AdminStudentsPage = () => {
                 <td>{student.status}</td>
                 <td>
                   <button
+                    disabled={student.status === "inactive"}
                     onClick={() => {
                       setSelectedGroup(selected || student.group || { _id: studentGroupId });
                       setOpenReassign(true);
@@ -186,6 +218,17 @@ const AdminStudentsPage = () => {
                     type="button"
                   >
                     Reassign Group Owner
+                  </button>
+                  <button
+                    className="danger-btn"
+                    disabled={student.status === "inactive"}
+                    onClick={() => {
+                      setSelectedStudent(student);
+                      setOpenDelete(true);
+                    }}
+                    type="button"
+                  >
+                    Delete
                   </button>
                 </td>
               </tr>
@@ -273,6 +316,36 @@ const AdminStudentsPage = () => {
               </option>
             ))}
           </select>
+        </Modal>
+      ) : null}
+      {openDelete && selectedStudent ? (
+        <Modal
+          onClose={() => {
+            setOpenDelete(false);
+            setSelectedStudent(null);
+          }}
+          title="Delete Student"
+        >
+          <div className="delete-modal-content">
+            <p>
+              Are you sure you want to delete {selectedStudent.firstName} {selectedStudent.lastName}?
+            </p>
+            <p>This will mark the student as inactive.</p>
+            <div className="delete-modal-actions">
+              <button
+                onClick={() => {
+                  setOpenDelete(false);
+                  setSelectedStudent(null);
+                }}
+                type="button"
+              >
+                Cancel
+              </button>
+              <button className="danger-btn" onClick={deleteStudent} type="button">
+                Confirm Delete
+              </button>
+            </div>
+          </div>
         </Modal>
       ) : null}
     </section>

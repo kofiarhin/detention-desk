@@ -15,6 +15,7 @@
   flex-direction: column;
   gap: 0.75rem;
   margin-bottom: 2rem;
+  align-items: flex-start;
 
   input {
     padding: 0.6rem 1rem;
@@ -39,6 +40,14 @@
       opacity: 0.9;
     }
   }
+}
+
+.admin-students-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #e2e8f0;
+  font-size: 0.9rem;
 }
 
 .admin-students-table {
@@ -77,6 +86,39 @@
       }
     }
   }
+
+  .inactive-row {
+    opacity: 0.55;
+  }
+
+  td:last-child {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  button:disabled,
+  select:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.danger-btn {
+  background: #b91c1c !important;
+  color: #fff;
+}
+
+.delete-modal-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.delete-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
 }
 
 .admin-pagination {

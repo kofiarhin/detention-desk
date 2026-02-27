@@ -17,6 +17,6 @@ router.post("/", createStudent);
 router.get("/", listStudents);
 router.get("/:id", getStudent);
 router.put("/:id", updateStudent);
-router.delete("/:id", deleteStudent);
+router.delete("/:id", requireRole("schoolAdmin"), deleteStudent);
 
 module.exports = router;

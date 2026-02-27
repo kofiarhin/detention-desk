@@ -17,7 +17,8 @@
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:ui": "playwright test --ui",
-    "test:all": "npm run test:server && npm run test:e2e"
+    "test:all": "npm run test:server && npm run test:e2e",
+    "normalize:detentions": "node server/scripts/normalizeDetentions.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

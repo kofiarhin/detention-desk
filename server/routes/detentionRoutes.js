@@ -19,6 +19,7 @@ const {
 router.use(requireAuth, requireTenant, requireRole("schoolAdmin", "teacher"));
 
 router.get("/", listDetentions);
+router.get("/ops", getCommandCenter);
 router.get("/command-center", getCommandCenter);
 
 router.post("/bulk/serve", requireRole("schoolAdmin"), bulkServeDetentions);

@@ -36,7 +36,13 @@ async function bulkServeDetentions({ schoolId, detentionIds }) {
     schoolId,
     detentionIds,
     fromStatuses: ["pending", "scheduled"],
-    setFields: { status: "served", minutesRemaining: 0 },
+    setFields: {
+      status: "served",
+      minutesRemaining: 0,
+      servedAt: new Date(),
+      voidedAt: null,
+      voidedBy: null,
+    },
   });
 }
 
@@ -45,7 +51,10 @@ async function bulkVoidDetentions({ schoolId, detentionIds }) {
     schoolId,
     detentionIds,
     fromStatuses: ["pending", "scheduled"],
-    setFields: { status: "voided" },
+    setFields: {
+      status: "voided",
+      voidedAt: new Date(),
+    },
   });
 }
 
@@ -54,7 +63,14 @@ async function bulkScheduleDetentions({ schoolId, detentionIds, scheduledFor }) 
     schoolId,
     detentionIds,
     fromStatuses: ["pending"],
-    setFields: { status: "scheduled", scheduledFor },
+    setFields: {
+      status: "scheduled",
+      scheduledFor,
+      servedAt: null,
+      servedBy: null,
+      voidedAt: null,
+      voidedBy: null,
+    },
   });
 }
 

@@ -42,6 +42,13 @@ const DetentionSchema = new mongoose.Schema(
       default: null,
       index: true,
     },
+    voidedAt: { type: Date, default: null },
+    voidedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+      index: true,
+    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -51,7 +58,6 @@ const DetentionSchema = new mongoose.Schema(
   },
   { timestamps: true },
 );
-
 
 DetentionSchema.pre("validate", function (next) {
   if (!this.assignedTeacherId && this.createdBy) {

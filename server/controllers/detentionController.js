@@ -10,15 +10,7 @@ const {
 } = require("../services/detentionOperationsService");
 const { loadStudentForTeacherOrFail, applyStudentScope } = require("../services/studentAccessService");
 
-const VALID_TRANSITIONS = {
-  pending: ["scheduled", "served", "voided"],
-  scheduled: ["served", "voided"],
-  served: [],
-  voided: [],
-};
-
-const COMMAND_CENTER_VIEWS = ["needsAttention", "today", "upcoming", "unscheduled", "history"];
-const VALID_STATUSES = ["pending", "scheduled", "served", "voided"];
+const COMMAND_CENTER_VIEWS = ["upcoming", "today", "needsAttention", "history"];
 
 function toBoolean(value) {
   if (value === true || value === "true") return true;
@@ -51,71 +43,58 @@ function getDayBounds(now) {
   return { start, end };
 }
 
-function getViewMatch(view, now) {
+function getOpsFilter({ schoolId, view, now }) {
   const { start, end } = getDayBounds(now);
+  const filter = { schoolId };
 
-  if (view === "needsAttention") {
-    return {
-      $or: [
-        { status: "pending", scheduledFor: null },
-        { status: "scheduled", scheduledFor: { $lt: now } },
-      ],
-    };
+  if (view === "upcoming") {
+    filter.status = "scheduled";
+    filter.scheduledFor = { $gt: now };
+    return filter;
   }
 
   if (view === "today") {
-    return {
-      status: { $in: ["scheduled", "pending"] },
-      scheduledFor: { $gte: start, $lte: end },
-    };
+    filter.status = "scheduled";
+    filter.scheduledFor = { $gte: start, $lte: end };
+    return filter;
   }
 
-  if (view === "upcoming") {
-    return {
-      status: "scheduled",
-      scheduledFor: { $gt: end },
-    };
+  if (view === "needsAttention") {
+    filter.status = "scheduled";
+    filter.scheduledFor = { $lt: now };
+    return filter;
   }
 
-  if (view === "unscheduled") {
-    return {
-      status: "pending",
-      scheduledFor: null,
-    };
-  }
-
-  return {
-    status: { $in: ["served", "voided"] },
-  };
+  filter.status = { $in: ["served", "voided"] };
+  return filter;
 }
 
-function getSortStages(view, now) {
-  if (view === "needsAttention") {
-    return [
-      {
-        $addFields: {
-          _overdueRank: {
-            $cond: [{ $and: [{ $eq: ["$status", "scheduled"] }, { $lt: ["$scheduledFor", now] }] }, 0, 1],
-          },
-          _scheduledSort: {
-            $ifNull: ["$scheduledFor", new Date("9999-12-31T23:59:59.999Z")],
-          },
-        },
-      },
-      { $sort: { _overdueRank: 1, _scheduledSort: 1, createdAt: -1 } },
-      { $project: { _overdueRank: 0, _scheduledSort: 0 } },
-    ];
+function normalizeLifecycleFromSchedule(detention, body = {}) {
+  if (!Object.prototype.hasOwnProperty.call(body, "scheduledFor")) {
+    return;
   }
 
-  if (view === "today" || view === "upcoming") {
-    return [{ $sort: { scheduledFor: 1, createdAt: -1 } }];
+  const nextScheduledFor = body.scheduledFor ? new Date(body.scheduledFor) : null;
+  if (body.scheduledFor && Number.isNaN(nextScheduledFor.getTime())) {
+    throw new Error("Invalid scheduledFor date");
   }
 
-  if (view === "unscheduled") {
-    return [{ $sort: { createdAt: -1 } }];
+  if (nextScheduledFor) {
+    detention.scheduledFor = nextScheduledFor;
+    detention.status = "scheduled";
+  } else {
+    detention.scheduledFor = null;
+    detention.status = "pending";
   }
 
-  return [{ $sort: { servedAt: -1, createdAt: -1 } }];
+  detention.servedAt = null;
+  detention.servedBy = null;
+  detention.voidedAt = null;
+  detention.voidedBy = null;
+
+  if (!Number.isFinite(detention.minutesRemaining) || detention.minutesRemaining < 0) {
+    detention.minutesRemaining = detention.minutesAssigned;
+  }
 }
 
 exports.listDetentions = async (req, res) => {
@@ -185,210 +164,51 @@ exports.listDetentions = async (req, res) => {
 
 exports.getCommandCenter = async (req, res) => {
   const { page, limit, skip } = parseListQuery(req.query || {});
-  const view = req.query?.view || "needsAttention";
-  const q = String(req.query?.q || "").trim();
-  const { groupId } = req.query || {};
-  const status = req.query?.status ? String(req.query.status).trim() : "";
+  const view = req.query?.view || "upcoming";
 
   if (!COMMAND_CENTER_VIEWS.includes(view)) {
     return res.status(400).json(errorResponse("VALIDATION_ERROR", "Invalid view"));
   }
 
-  if (groupId && !mongoose.Types.ObjectId.isValid(String(groupId))) {
-    return res.status(400).json(errorResponse("VALIDATION_ERROR", "Invalid groupId"));
-  }
-
-  if (status && !VALID_STATUSES.includes(status)) {
-    return res.status(400).json(errorResponse("VALIDATION_ERROR", "Invalid status"));
-  }
-
   const now = new Date();
-  const scopedMatch = applyStudentScope(req);
+  const { start, end } = getDayBounds(now);
+  const scopedFilter = applyStudentScope(req);
 
-  const baseJoinPipeline = [
-    { $match: scopedMatch },
-    {
-      $lookup: {
-        from: "students",
-        localField: "studentId",
-        foreignField: "_id",
-        as: "student",
-      },
-    },
-    { $unwind: "$student" },
-    {
-      $lookup: {
-        from: "groups",
-        localField: "student.groupId",
-        foreignField: "_id",
-        as: "group",
-      },
-    },
-    {
-      $unwind: {
-        path: "$group",
-        preserveNullAndEmptyArrays: true,
-      },
-    },
-  ];
-
-  const searchFilter = [];
-
-  if (q) {
-    const regex = new RegExp(q, "i");
-    searchFilter.push({
-      $or: [
-        { "student.firstName": regex },
-        { "student.lastName": regex },
-        { "student.admissionNumber": regex },
-      ],
-    });
-  }
-
-  if (groupId) {
-    searchFilter.push({ "student.groupId": new mongoose.Types.ObjectId(groupId) });
-  }
-
-  if (status) {
-    searchFilter.push({ status });
-  }
-
-  const queryMatch = {
-    $and: [getViewMatch(view, now), ...searchFilter],
-  };
+  const countFilter = { ...scopedFilter };
 
   try {
-    const countsPipeline = [
-      { $match: scopedMatch },
-      {
-        $group: {
-          _id: null,
-          needsAttention: {
-            $sum: {
-              $cond: [
-                {
-                  $or: [
-                    { $and: [{ $eq: ["$status", "pending"] }, { $eq: ["$scheduledFor", null] }] },
-                    { $and: [{ $eq: ["$status", "scheduled"] }, { $lt: ["$scheduledFor", now] }] },
-                  ],
-                },
-                1,
-                0,
-              ],
-            },
-          },
-          today: {
-            $sum: {
-              $cond: [
-                {
-                  $and: [
-                    { $in: ["$status", ["scheduled", "pending"]] },
-                    { $ne: ["$scheduledFor", null] },
-                    { $gte: ["$scheduledFor", getDayBounds(now).start] },
-                    { $lte: ["$scheduledFor", getDayBounds(now).end] },
-                  ],
-                },
-                1,
-                0,
-              ],
-            },
-          },
-          upcoming: {
-            $sum: {
-              $cond: [
-                {
-                  $and: [
-                    { $eq: ["$status", "scheduled"] },
-                    { $gt: ["$scheduledFor", getDayBounds(now).end] },
-                  ],
-                },
-                1,
-                0,
-              ],
-            },
-          },
-          unscheduled: {
-            $sum: {
-              $cond: [
-                {
-                  $and: [{ $eq: ["$status", "pending"] }, { $eq: ["$scheduledFor", null] }],
-                },
-                1,
-                0,
-              ],
-            },
-          },
-          history: {
-            $sum: {
-              $cond: [{ $in: ["$status", ["served", "voided"]] }, 1, 0],
-            },
-          },
-        },
-      },
-    ];
-
-    const [countRows, listRows] = await Promise.all([
-      Detention.aggregate(countsPipeline),
-      Detention.aggregate([
-        ...baseJoinPipeline,
-        { $match: queryMatch },
-        ...getSortStages(view, now),
-        {
-          $facet: {
-            items: [
-              { $skip: skip },
-              { $limit: limit },
-              {
-                $project: {
-                  _id: 1,
-                  studentId: 1,
-                  assignedTeacherId: 1,
-                  minutesAssigned: 1,
-                  minutesRemaining: 1,
-                  status: 1,
-                  scheduledFor: 1,
-                  servedAt: 1,
-                  servedBy: 1,
-                  createdBy: 1,
-                  createdAt: 1,
-                  updatedAt: 1,
-                  student: {
-                    _id: "$student._id",
-                    firstName: "$student.firstName",
-                    lastName: "$student.lastName",
-                    admissionNumber: "$student.admissionNumber",
-                    groupId: "$student.groupId",
-                  },
-                  group: {
-                    _id: "$group._id",
-                    label: "$group.label",
-                    year: "$group.year",
-                    form: "$group.form",
-                  },
-                },
-              },
-            ],
-            meta: [{ $count: "total" }],
-          },
-        },
-      ]),
+    const [items, total, upcomingCount, todayCount, needsAttentionCount, historyCount] = await Promise.all([
+      Detention.find(getOpsFilter({ schoolId: scopedFilter.schoolId, view, now }))
+        .populate("studentId", "firstName lastName admissionNumber")
+        .populate({ path: "incidentId", populate: { path: "categoryId", select: "name" } })
+        .populate("createdBy", "name")
+        .populate("assignedTeacherId", "name")
+        .sort({ scheduledFor: 1, createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Detention.countDocuments(getOpsFilter({ schoolId: scopedFilter.schoolId, view, now })),
+      Detention.countDocuments({ ...countFilter, status: "scheduled", scheduledFor: { $gt: now } }),
+      Detention.countDocuments({ ...countFilter, status: "scheduled", scheduledFor: { $gte: start, $lte: end } }),
+      Detention.countDocuments({ ...countFilter, status: "scheduled", scheduledFor: { $lt: now } }),
+      Detention.countDocuments({ ...countFilter, status: { $in: ["served", "voided"] } }),
     ]);
 
-    const counts = countRows[0] || {
-      needsAttention: 0,
-      today: 0,
-      upcoming: 0,
-      unscheduled: 0,
-      history: 0,
-    };
-
-    const items = listRows[0]?.items || [];
-    const total = listRows[0]?.meta?.[0]?.total || 0;
-
-    return res.json(successResponse({ items, counts, meta: buildMeta({ page, limit, total }) }));
+    return res.json(
+      successResponse({
+        items,
+        counts: {
+          upcoming: upcomingCount,
+          today: todayCount,
+          needsAttention: needsAttentionCount,
+          history: historyCount,
+        },
+        meta: buildMeta({ page, limit, total }),
+      }),
+    );
   } catch (err) {
     console.error("[getCommandCenter]", err);
-    return res.status(500).json(errorResponse("SERVER_ERROR", "Could not load detention command center"));
+    return res.status(500).json(errorResponse("SERVER_ERROR", "Could not load detention ops"));
   }
 };
 
@@ -407,16 +227,26 @@ exports.updateDetention = async (req, res) => {
     const detention = await Detention.findOne(applyStudentScope(req, { _id: req.params.id }));
     if (!detention) return res.status(404).json(errorResponse("NOT_FOUND", "Detention not found"));
 
-    const nextStatus = req.body?.status;
-    const scheduledFor = req.body?.scheduledFor;
-
-    if (nextStatus && !VALID_TRANSITIONS[detention.status].includes(nextStatus)) {
-      return res.status(400).json(errorResponse("INVALID_TRANSITION", "Invalid status transition"));
+    if (["served", "voided"].includes(detention.status)) {
+      return res.status(400).json(errorResponse("INVALID_TRANSITION", "Finalized detentions cannot be edited"));
     }
 
-    if (nextStatus) detention.status = nextStatus;
-    if (Object.prototype.hasOwnProperty.call(req.body || {}, "scheduledFor")) {
-      detention.scheduledFor = scheduledFor || null;
+    if (Object.prototype.hasOwnProperty.call(req.body || {}, "minutesAssigned")) {
+      const nextMinutesAssigned = Number(req.body.minutesAssigned);
+      if (!Number.isFinite(nextMinutesAssigned) || nextMinutesAssigned < 0) {
+        return res.status(400).json(errorResponse("VALIDATION_ERROR", "minutesAssigned must be a non-negative number"));
+      }
+
+      detention.minutesAssigned = nextMinutesAssigned;
+      if (!Number.isFinite(detention.minutesRemaining) || detention.minutesRemaining > nextMinutesAssigned) {
+        detention.minutesRemaining = nextMinutesAssigned;
+      }
+    }
+
+    try {
+      normalizeLifecycleFromSchedule(detention, req.body || {});
+    } catch (error) {
+      return res.status(400).json(errorResponse("VALIDATION_ERROR", error.message));
     }
 
     await detention.save();
@@ -431,19 +261,28 @@ exports.serveDetention = async (req, res) => {
   try {
     const detention = await Detention.findOne(applyStudentScope(req, { _id: req.params.id }));
     if (!detention) return res.status(404).json(errorResponse("NOT_FOUND", "Detention not found"));
-    if (req.auth.role === "teacher") {
-      const student = await loadStudentForTeacherOrFail(req, detention.studentId);
-      if (!student) return res.status(403).json(errorResponse("FORBIDDEN", "Student not assigned to teacher"));
+    if (detention.status === "served") {
+      return res.status(400).json(errorResponse("INVALID_TRANSITION", "Detention is already served"));
+    }
+    if (detention.status === "voided") {
+      return res.status(400).json(errorResponse("INVALID_TRANSITION", "Voided detention cannot be served"));
     }
 
-    if (!["pending", "scheduled"].includes(detention.status)) {
-      return res.status(400).json(errorResponse("INVALID_TRANSITION", "Detention cannot be served"));
+    if (req.auth.role === "teacher") {
+      if (String(detention.createdBy) !== String(req.auth.userId)) {
+        return res.status(403).json(errorResponse("FORBIDDEN", "Only assigning teacher can serve this detention"));
+      }
+
+      const student = await loadStudentForTeacherOrFail(req, detention.studentId);
+      if (!student) return res.status(403).json(errorResponse("FORBIDDEN", "Student not assigned to teacher"));
     }
 
     detention.status = "served";
     detention.minutesRemaining = 0;
     detention.servedAt = new Date();
     detention.servedBy = req.auth.userId;
+    detention.voidedAt = null;
+    detention.voidedBy = null;
     await detention.save();
     return res.json(successResponse(detention));
   } catch (err) {
@@ -455,11 +294,16 @@ exports.voidDetention = async (req, res) => {
   try {
     const detention = await Detention.findOne(applyStudentScope(req, { _id: req.params.id }));
     if (!detention) return res.status(404).json(errorResponse("NOT_FOUND", "Detention not found"));
-    if (!["pending", "scheduled"].includes(detention.status)) {
-      return res.status(400).json(errorResponse("INVALID_TRANSITION", "Detention cannot be voided"));
+    if (detention.status === "served") {
+      return res.status(400).json(errorResponse("INVALID_TRANSITION", "Served detention cannot be voided"));
+    }
+    if (detention.status === "voided") {
+      return res.status(400).json(errorResponse("INVALID_TRANSITION", "Detention is already voided"));
     }
 
     detention.status = "voided";
+    detention.voidedAt = new Date();
+    detention.voidedBy = req.auth.userId;
     await detention.save();
     return res.json(successResponse(detention));
   } catch (err) {

@@ -5,14 +5,11 @@ import { apiRequest } from "../../services/api";
 import "./detentions-page.styles.scss";
 
 const TAB_OPTIONS = [
-  { key: "needsAttention", label: "Needs Attention" },
-  { key: "today", label: "Today" },
   { key: "upcoming", label: "Upcoming" },
-  { key: "unscheduled", label: "Unscheduled" },
+  { key: "today", label: "Today" },
+  { key: "needsAttention", label: "Needs Attention" },
   { key: "history", label: "History" },
 ];
-
-const STATUS_OPTIONS = ["pending", "scheduled", "served", "voided"];
 
 const toLocalInputValue = (dateValue) => {
   if (!dateValue) return "";
@@ -35,40 +32,29 @@ const formatScheduled = (scheduledFor) => {
   return date.toLocaleString();
 };
 
-const formatGroup = (group) => {
-  if (!group) return "Unassigned";
-  if (group.label) return group.label;
-  if (group.year || group.form) return `Year ${group.year || "-"} Form ${group.form || "-"}`;
-  return "Unassigned";
-};
-
 const statusLabel = (status) => `${status.charAt(0).toUpperCase()}${status.slice(1)}`;
 
+const getCategoryName = (detention) => detention?.incidentId?.categoryId?.name || "—";
+
+const getAssignedByName = (detention) => detention?.createdBy?.name || detention?.assignedTeacherId?.name || "—";
+
 const AdminDetentionsPage = () => {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [detentions, setDetentions] = useState([]);
   const [counts, setCounts] = useState({
-    needsAttention: 0,
-    today: 0,
     upcoming: 0,
-    unscheduled: 0,
+    today: 0,
+    needsAttention: 0,
     history: 0,
   });
-  const [groups, setGroups] = useState([]);
   const [meta, setMeta] = useState({ page: 1, pages: 0, total: 0, limit: 20 });
-  const [view, setView] = useState("needsAttention");
-  const [query, setQuery] = useState("");
-  const [groupId, setGroupId] = useState("");
-  const [status, setStatus] = useState("");
+  const [view, setView] = useState("upcoming");
   const [page, setPage] = useState(1);
-  const [selected, setSelected] = useState([]);
   const [expandedRowId, setExpandedRowId] = useState("");
-  const [editForm, setEditForm] = useState({ mode: "schedule", scheduledFor: "", status: "scheduled" });
+  const [editForm, setEditForm] = useState({ scheduledFor: "" });
   const [feedback, setFeedback] = useState({ type: "", message: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
-  const canBulkAct = selected.length > 0;
 
   const commandCenterPath = useMemo(() => {
     const params = new URLSearchParams({
@@ -77,12 +63,8 @@ const AdminDetentionsPage = () => {
       limit: "20",
     });
 
-    if (query.trim()) params.set("q", query.trim());
-    if (groupId) params.set("groupId", groupId);
-    if (status) params.set("status", status);
-
-    return `/api/detentions/command-center?${params.toString()}`;
-  }, [groupId, page, query, status, view]);
+    return `/api/detentions/ops?${params.toString()}`;
+  }, [page, view]);
 
   const loadCommandCenter = useCallback(async () => {
     setLoading(true);
@@ -94,32 +76,15 @@ const AdminDetentionsPage = () => {
       setCounts(payload?.data?.counts || {});
       setMeta(payload?.data?.meta || { page: 1, pages: 0, total: 0, limit: 20 });
     } catch (err) {
-      setError(err.message || "Could not load command center");
+      setError(err.message || "Could not load detentions");
     } finally {
       setLoading(false);
     }
   }, [commandCenterPath, token]);
 
-  const loadGroups = useCallback(async () => {
-    try {
-      const payload = await apiRequest({ path: "/api/admin/groups", token });
-      setGroups(payload?.data || []);
-    } catch (err) {
-      setGroups([]);
-    }
-  }, [token]);
-
-  useEffect(() => {
-    void loadGroups();
-  }, [loadGroups]);
-
   useEffect(() => {
     void loadCommandCenter();
   }, [loadCommandCenter]);
-
-  useEffect(() => {
-    setSelected([]);
-  }, [view, query, groupId, status, page]);
 
   const handleAction = async (path, body = {}, message = "Updated detention") => {
     setFeedback({ type: "", message: "" });
@@ -137,21 +102,11 @@ const AdminDetentionsPage = () => {
   const handleSaveEdit = async (detentionId) => {
     const nextScheduledFor = fromLocalInputValue(editForm.scheduledFor);
 
-    if (editForm.mode === "schedule" && !nextScheduledFor) {
-      setFeedback({ type: "error", message: "Please select a valid schedule date and time." });
-      return;
-    }
-
-    const body = {
-      status: editForm.status,
-      scheduledFor: nextScheduledFor,
-    };
-
     try {
       await apiRequest({
         path: `/api/detentions/${detentionId}`,
         method: "PUT",
-        body,
+        body: { scheduledFor: nextScheduledFor },
         token,
       });
       setFeedback({ type: "success", message: "Detention updated." });
@@ -162,47 +117,16 @@ const AdminDetentionsPage = () => {
     }
   };
 
-  const openEditor = (item, mode) => {
-    setExpandedRowId(item._id);
-    setEditForm({
-      mode,
-      scheduledFor: toLocalInputValue(item.scheduledFor),
-      status: item.status === "pending" && mode === "schedule" ? "scheduled" : item.status,
-    });
+  const isAdmin = user?.role === "schoolAdmin";
+  const canServe = (item) => {
+    if (item.status === "served" || item.status === "voided") return false;
+    if (isAdmin) return true;
+    if (user?.role !== "teacher") return false;
+    return String(item?.createdBy?._id || "") === String(user?.id || "");
   };
 
-  const clearFilters = () => {
-    setQuery("");
-    setGroupId("");
-    setStatus("");
-    setPage(1);
-  };
-
-  const toggleSelect = (detentionId) => {
-    setSelected((current) =>
-      current.includes(detentionId)
-        ? current.filter((item) => item !== detentionId)
-        : [...current, detentionId],
-    );
-  };
-
-  const runBulkAction = async (path, body = {}, successMessage = "Bulk action complete") => {
-    if (!canBulkAct) return;
-
-    try {
-      await apiRequest({
-        path,
-        method: "POST",
-        token,
-        body: { detentionIds: selected, ...body },
-      });
-      setSelected([]);
-      setFeedback({ type: "success", message: successMessage });
-      await loadCommandCenter();
-    } catch (err) {
-      setFeedback({ type: "error", message: err.message || "Bulk action failed" });
-    }
-  };
+  const canEdit = (item) => isAdmin && !["served", "voided"].includes(item.status);
+  const canVoid = (item) => isAdmin && !["served", "voided"].includes(item.status);
 
   return (
     <section className="app-page detention-command-center">
@@ -227,52 +151,6 @@ const AdminDetentionsPage = () => {
         ))}
       </nav>
 
-      <div className="detention-command-center-filters">
-        <input
-          onChange={(event) => {
-            setQuery(event.target.value);
-            setPage(1);
-          }}
-          placeholder="Search student name or admission number"
-          type="text"
-          value={query}
-        />
-
-        <select
-          onChange={(event) => {
-            setGroupId(event.target.value);
-            setPage(1);
-          }}
-          value={groupId}
-        >
-          <option value="">All groups</option>
-          {groups.map((group) => (
-            <option key={group._id} value={group._id}>
-              {formatGroup(group)}
-            </option>
-          ))}
-        </select>
-
-        <select
-          onChange={(event) => {
-            setStatus(event.target.value);
-            setPage(1);
-          }}
-          value={status}
-        >
-          <option value="">All statuses</option>
-          {STATUS_OPTIONS.map((option) => (
-            <option key={option} value={option}>
-              {statusLabel(option)}
-            </option>
-          ))}
-        </select>
-
-        <button onClick={clearFilters} type="button">
-          Clear Filters
-        </button>
-      </div>
-
       {feedback.message ? (
         <div className={`detention-command-center-feedback ${feedback.type}`}>{feedback.message}</div>
       ) : null}
@@ -286,20 +164,12 @@ const AdminDetentionsPage = () => {
             <table className="detention-command-center-table">
               <thead>
                 <tr>
-                  <th>
-                    <input
-                      checked={detentions.length > 0 && selected.length === detentions.length}
-                      onChange={(event) =>
-                        setSelected(event.target.checked ? detentions.map((item) => item._id) : [])
-                      }
-                      type="checkbox"
-                    />
-                  </th>
                   <th>Student</th>
-                  <th>Group</th>
-                  <th>Duration</th>
-                  <th>Scheduled</th>
+                  <th>Category</th>
+                  <th>Minutes Assigned</th>
+                  <th>Scheduled For</th>
                   <th>Status</th>
+                  <th>Assigned By</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -313,7 +183,6 @@ const AdminDetentionsPage = () => {
                 ) : null}
 
                 {detentions.map((item) => {
-                  const isFinalized = item.status === "served" || item.status === "voided";
                   const isOverdue = item.status === "scheduled" && item.scheduledFor
                     ? new Date(item.scheduledFor).getTime() < Date.now()
                     : false;
@@ -322,25 +191,18 @@ const AdminDetentionsPage = () => {
                     <Fragment key={item._id}>
                       <tr key={item._id}>
                         <td>
-                          <input
-                            checked={selected.includes(item._id)}
-                            onChange={() => toggleSelect(item._id)}
-                            type="checkbox"
-                          />
-                        </td>
-                        <td>
-                          {item.student?._id ? (
-                            <Link to={`/admin/students/${item.student._id}`}>
-                              {item.student.firstName} {item.student.lastName}
+                          {item.studentId?._id ? (
+                            <Link to={`/admin/students/${item.studentId._id}`}>
+                              {item.studentId.firstName} {item.studentId.lastName}
                             </Link>
                           ) : (
                             <span>Unknown student</span>
                           )}
-                          {item.student?.admissionNumber ? (
-                            <div className="detention-command-center-subtext">{item.student.admissionNumber}</div>
+                          {item.studentId?.admissionNumber ? (
+                            <div className="detention-command-center-subtext">{item.studentId.admissionNumber}</div>
                           ) : null}
                         </td>
-                        <td>{formatGroup(item.group)}</td>
+                        <td>{getCategoryName(item)}</td>
                         <td>{item.minutesAssigned} mins</td>
                         <td>
                           {formatScheduled(item.scheduledFor)}
@@ -351,19 +213,10 @@ const AdminDetentionsPage = () => {
                             {statusLabel(item.status)}
                           </span>
                         </td>
+                        <td>{getAssignedByName(item)}</td>
                         <td>
                           <div className="detention-command-center-actions">
-                            {!isFinalized && item.status === "pending" && !item.scheduledFor ? (
-                              <button onClick={() => openEditor(item, "schedule")} type="button">
-                                Schedule
-                              </button>
-                            ) : null}
-                            {!isFinalized && item.status === "scheduled" ? (
-                              <button onClick={() => openEditor(item, "schedule")} type="button">
-                                Reschedule
-                              </button>
-                            ) : null}
-                            {!isFinalized ? (
+                            {canServe(item) ? (
                               <button
                                 onClick={() =>
                                   handleAction(
@@ -377,7 +230,18 @@ const AdminDetentionsPage = () => {
                                 Mark Served
                               </button>
                             ) : null}
-                            {!isFinalized ? (
+                            {canEdit(item) ? (
+                              <button
+                                onClick={() => {
+                                  setExpandedRowId(item._id);
+                                  setEditForm({ scheduledFor: toLocalInputValue(item.scheduledFor) });
+                                }}
+                                type="button"
+                              >
+                                Edit
+                              </button>
+                            ) : null}
+                            {canVoid(item) ? (
                               <button
                                 onClick={() =>
                                   handleAction(`/api/detentions/${item._id}/void`, {}, "Detention voided.")
@@ -387,15 +251,12 @@ const AdminDetentionsPage = () => {
                                 Void
                               </button>
                             ) : null}
-                            <button onClick={() => openEditor(item, "edit")} type="button">
-                              Edit
-                            </button>
                           </div>
                         </td>
                       </tr>
 
                       {expandedRowId === item._id ? (
-                        <tr className="detention-command-center-editor-row" key={`${item._id}-editor`}>
+                        <tr className="detention-command-center-editor-row">
                           <td colSpan={7}>
                             <div className="detention-command-center-editor">
                               <label htmlFor={`scheduled-${item._id}`}>Scheduled For</label>
@@ -407,21 +268,6 @@ const AdminDetentionsPage = () => {
                                 type="datetime-local"
                                 value={editForm.scheduledFor}
                               />
-
-                              <label htmlFor={`status-${item._id}`}>Status</label>
-                              <select
-                                id={`status-${item._id}`}
-                                onChange={(event) =>
-                                  setEditForm((current) => ({ ...current, status: event.target.value }))
-                                }
-                                value={editForm.status}
-                              >
-                                {STATUS_OPTIONS.map((option) => (
-                                  <option key={option} value={option}>
-                                    {statusLabel(option)}
-                                  </option>
-                                ))}
-                              </select>
 
                               <button onClick={() => handleSaveEdit(item._id)} type="button">
                                 Save
@@ -457,27 +303,6 @@ const AdminDetentionsPage = () => {
               </button>
             </div>
           </footer>
-
-          <section className="detention-command-center-bulk">
-            <h2>Bulk actions (secondary)</h2>
-            <p>{selected.length} selected</p>
-            <div className="detention-command-center-bulk-actions">
-              <button
-                disabled={!canBulkAct}
-                onClick={() => runBulkAction("/api/detentions/bulk/serve", {}, "Bulk marked served.")}
-                type="button"
-              >
-                Bulk Serve
-              </button>
-              <button
-                disabled={!canBulkAct}
-                onClick={() => runBulkAction("/api/detentions/bulk/void", {}, "Bulk void complete.")}
-                type="button"
-              >
-                Bulk Void
-              </button>
-            </div>
-          </section>
         </>
       ) : null}
     </section>

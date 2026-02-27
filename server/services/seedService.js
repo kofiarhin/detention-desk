@@ -1,16 +1,17 @@
 const Category = require("../models/Category");
+const { normalizeCategoryName } = require("../utils/normalize");
 
 const DEFAULT_BEHAVIOUR = [
-  { name: "Disruption", sortOrder: 10 },
-  { name: "Late to Class", sortOrder: 20 },
-  { name: "Uniform Issue", sortOrder: 30 },
-  { name: "Disrespect", sortOrder: 40 },
+  { name: "Disruption", sortOrder: 10, detentionMinutes: 20 },
+  { name: "Late to Class", sortOrder: 20, detentionMinutes: 15 },
+  { name: "Uniform Issue", sortOrder: 30, detentionMinutes: 10 },
+  { name: "Disrespect", sortOrder: 40, detentionMinutes: 30 },
 ];
 
 const DEFAULT_REWARD = [
-  { name: "Good Work", sortOrder: 10 },
-  { name: "Helping Others", sortOrder: 20 },
-  { name: "Improvement", sortOrder: 30 },
+  { name: "Good Work", sortOrder: 10, rewardMinutes: 10 },
+  { name: "Helping Others", sortOrder: 20, rewardMinutes: 15 },
+  { name: "Improvement", sortOrder: 30, rewardMinutes: 10 },
 ];
 
 async function seedDefaultCategories({ schoolId }) {
@@ -22,7 +23,7 @@ async function seedDefaultCategories({ schoolId }) {
         filter: {
           schoolId,
           type: "behaviour",
-          nameNormalized: c.name.toLowerCase(),
+          nameNormalized: normalizeCategoryName(c.name),
         },
         update: {
           $setOnInsert: {
@@ -30,6 +31,7 @@ async function seedDefaultCategories({ schoolId }) {
             type: "behaviour",
             name: c.name,
             sortOrder: c.sortOrder,
+            detentionMinutes: c.detentionMinutes,
             isActive: true,
           },
         },
@@ -44,7 +46,7 @@ async function seedDefaultCategories({ schoolId }) {
         filter: {
           schoolId,
           type: "reward",
-          nameNormalized: c.name.toLowerCase(),
+          nameNormalized: normalizeCategoryName(c.name),
         },
         update: {
           $setOnInsert: {
@@ -52,6 +54,7 @@ async function seedDefaultCategories({ schoolId }) {
             type: "reward",
             name: c.name,
             sortOrder: c.sortOrder,
+            rewardMinutes: c.rewardMinutes,
             isActive: true,
           },
         },

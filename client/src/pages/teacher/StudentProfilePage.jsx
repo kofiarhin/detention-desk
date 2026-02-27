@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Modal from "../../components/modal/Modal";
 import { useAuth } from "../../context/AuthContext";
+import { useCategories } from "../../context/CategoriesContext";
 import { apiRequest } from "../../services/api";
 import "./student-profile-page.styles.scss";
 
@@ -40,6 +41,7 @@ const StudentProfilePage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { token } = useAuth();
+  const { ensureCategories, getActive, loading: categoryLoading } = useCategories();
 
   const [profile, setProfile] = useState(null);
   const [timeline, setTimeline] = useState({
@@ -52,8 +54,6 @@ const StudentProfilePage = () => {
   const [tab, setTab] = useState("incidents");
 
   const [policy, setPolicy] = useState(null);
-  const [behaviourCategories, setBehaviourCategories] = useState([]);
-  const [rewardCategories, setRewardCategories] = useState([]);
 
   const [openAction, setOpenAction] = useState("");
   const [message, setMessage] = useState("");
@@ -70,16 +70,12 @@ const StudentProfilePage = () => {
     try {
       setMessage("");
 
-      const [p, t, pol, behaviourCats, rewardCats] = await Promise.all([
+      const [p, t, pol] = await Promise.all([
         apiRequest({ path: `/api/students/${id}/profile`, token }),
         apiRequest({ path: `/api/students/${id}/timeline`, token }),
 
         // backend routes are mounted WITHOUT /api
         apiRequest({ path: `/policy`, token }).catch(() => null),
-        apiRequest({ path: `/categories?type=behaviour`, token }).catch(
-          () => [],
-        ),
-        apiRequest({ path: `/categories?type=reward`, token }).catch(() => []),
       ]);
 
       const profilePayload = unwrap(p);
@@ -97,19 +93,6 @@ const StudentProfilePage = () => {
       const policyPayload = unwrap(pol);
       setPolicy(policyPayload || null);
 
-      const behaviourPayload = unwrap(behaviourCats);
-      setBehaviourCategories(
-        Array.isArray(behaviourPayload)
-          ? behaviourPayload.filter((c) => c?.isActive !== false)
-          : [],
-      );
-
-      const rewardPayload = unwrap(rewardCats);
-      setRewardCategories(
-        Array.isArray(rewardPayload)
-          ? rewardPayload.filter((c) => c?.isActive !== false)
-          : [],
-      );
     } catch (err) {
       if (err?.status === 403) return navigate("/teacher/students");
       setMessage(err?.message || "Request failed");
@@ -120,6 +103,14 @@ const StudentProfilePage = () => {
     void load();
   }, [load]);
 
+  useEffect(() => {
+    ensureCategories("behaviour").catch(() => null);
+    ensureCategories("reward").catch(() => null);
+  }, [ensureCategories]);
+
+  const behaviourCategories = useMemo(() => getActive("behaviour"), [getActive]);
+  const rewardCategories = useMemo(() => getActive("reward"), [getActive]);
+
   const items = useMemo(() => {
     const list = pickTimelineList(timeline?.[tab]);
     const dateKey = (i) =>
@@ -129,22 +120,22 @@ const StudentProfilePage = () => {
     );
   }, [timeline, tab]);
 
+  const categoryOptions = useMemo(() => {
+    if (openAction === "reward") return rewardCategories;
+    if (openAction === "incident" || openAction === "detention") return behaviourCategories;
+    return [];
+  }, [behaviourCategories, openAction, rewardCategories]);
+
+  const categoryEmptyMessage =
+    openAction === "reward"
+      ? "No categories found. Run seed script."
+      : "No categories found. Run seed script.";
+
   const selectedCategory = useMemo(() => {
-    const list =
-      openAction === "reward"
-        ? rewardCategories
-        : openAction === "incident" || openAction === "detention"
-          ? behaviourCategories
-          : [];
     return (
-      list.find((c) => String(c?._id) === String(actionForm.categoryId)) || null
+      categoryOptions.find((c) => String(c?._id) === String(actionForm.categoryId)) || null
     );
-  }, [
-    actionForm.categoryId,
-    behaviourCategories,
-    openAction,
-    rewardCategories,
-  ]);
+  }, [actionForm.categoryId, categoryOptions]);
 
   const detentionPreviewMinutes = useMemo(() => {
     if (!policy || !selectedCategory) return null;
@@ -353,10 +344,19 @@ const StudentProfilePage = () => {
               />
             ) : (
               <>
+                {categoryLoading.behaviour || categoryLoading.reward ? (
+                  <p style={{ gridColumn: "span 2", color: "#94a3b8" }}>Loading categories...</p>
+                ) : null}
+
+                {!(categoryLoading.behaviour || categoryLoading.reward) && !categoryOptions.length ? (
+                  <p style={{ gridColumn: "span 2", color: "#fca5a5" }}>{categoryEmptyMessage}</p>
+                ) : null}
+
                 <select
                   onChange={(e) =>
                     setActionForm((v) => ({ ...v, categoryId: e.target.value }))
                   }
+                  disabled={!categoryOptions.length}
                   required
                   style={{ gridColumn: "span 2" }}
                   value={actionForm.categoryId}
@@ -366,10 +366,7 @@ const StudentProfilePage = () => {
                       ? "Select reward category"
                       : "Select behaviour category"}
                   </option>
-                  {(openAction === "reward"
-                    ? rewardCategories
-                    : behaviourCategories
-                  ).map((c) => (
+                  {categoryOptions.map((c) => (
                     <option key={c._id} value={c._id}>
                       {c.name}
                     </option>
@@ -456,7 +453,11 @@ const StudentProfilePage = () => {
               </>
             )}
 
-            <button type="submit" className="form-submit">
+            <button
+              type="submit"
+              className="form-submit"
+              disabled={openAction !== "note" && !actionForm.categoryId}
+            >
               Confirm Action
             </button>
           </form>

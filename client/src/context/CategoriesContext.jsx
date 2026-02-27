@@ -1,7 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
 import { useAuth } from "./AuthContext";
-import { apiRequest } from "../services/api";
+import { clearCategoriesCache, getCategories } from "../services/categories.service";
 
 const CategoriesContext = createContext(null);
 
@@ -39,11 +39,7 @@ export const CategoriesProvider = ({ children }) => {
       setError("");
 
       try {
-        const payload = await apiRequest({
-          path: `/api/categories?type=${type}`,
-          token,
-        });
-        const list = Array.isArray(payload?.data) ? payload.data : [];
+        const list = await getCategories({ token, type });
         setCategories((prev) => ({ ...prev, [type]: list }));
         setLoaded((prev) => ({ ...prev, [type]: true }));
       } catch (requestError) {
@@ -68,6 +64,7 @@ export const CategoriesProvider = ({ children }) => {
   const refreshCategories = useCallback(
     async (type) => {
       if (!["behaviour", "reward"].includes(type)) return;
+      clearCategoriesCache();
       await fetchCategories(type);
     },
     [fetchCategories],

@@ -6,12 +6,20 @@ exports.listCategories = async (req, res) => {
   try {
     const schoolId = req.auth.schoolId;
     const type = String(req.query.type || "").trim();
+    const includeInactive = String(req.query.includeInactive || "").trim() === "true";
+
+    if (type && !["behaviour", "reward"].includes(type)) {
+      return res
+        .status(400)
+        .json(errorResponse("VALIDATION_ERROR", "type must be behaviour or reward"));
+    }
 
     const filter = { schoolId };
     if (type) filter.type = type;
+    if (!includeInactive) filter.isActive = true;
 
     const items = await Category.find(filter)
-      .sort({ type: 1, sortOrder: 1, name: 1 })
+      .sort({ sortOrder: 1, name: 1 })
       .lean();
     return res.json(successResponse(items));
   } catch (err) {

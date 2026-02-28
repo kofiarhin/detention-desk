@@ -2,7 +2,7 @@ import { apiRequest } from "./api";
 
 export const fetchAdminGroups = async ({ token }) => {
   const payload = await apiRequest({
-    path: "/api/admin/groups",
+    path: "/admin/groups",
     token,
   });
 
@@ -17,7 +17,7 @@ export const fetchAdminGroups = async ({ token }) => {
 
 export const assignGroupOwner = async ({ token, groupId, ownerTeacherId }) => {
   return apiRequest({
-    path: `/api/admin/groups/${groupId}/assign-owner`,
+    path: `/admin/groups/${groupId}/assign-owner`,
     method: "PATCH",
     token,
     body: { ownerTeacherId },

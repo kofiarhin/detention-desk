@@ -11,7 +11,7 @@ const AdminDashboardPage = () => {
     const load = async () => {
       try {
         const payload = await apiRequest({
-          path: "/api/dashboard/admin",
+          path: "/dashboard/admin",
           token,
         });
         setState({ loading: false, error: "", data: payload.data });

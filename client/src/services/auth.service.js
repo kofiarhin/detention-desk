@@ -1,19 +1,11 @@
-import { apiRequest } from "./api";
+import { get, post } from "./api";
 
 export const loginUser = ({ schoolCode, email, password }) => {
-  return apiRequest({
-    path: "/api/auth/login",
-    method: "POST",
-    body: { schoolCode, email, password },
-  });
+  return post("/auth/login", { schoolCode, email, password });
 };
 
 export const forgotSchoolCode = ({ email, password }) => {
-  return apiRequest({
-    path: "/api/auth/forgot-school-code",
-    method: "POST",
-    body: { email, password },
-  });
+  return post("/auth/forgot-school-code", { email, password });
 };
 
 export const registerSchool = ({
@@ -22,17 +14,14 @@ export const registerSchool = ({
   adminEmail,
   adminPassword,
 }) => {
-  return apiRequest({
-    path: "/api/signup/school",
-    method: "POST",
-    body: { schoolName, adminName, adminEmail, adminPassword },
+  return post("/signup/school", {
+    schoolName,
+    adminName,
+    adminEmail,
+    adminPassword,
   });
 };
 
 export const getMe = (token) => {
-  return apiRequest({
-    path: "/api/auth/me",
-    method: "GET",
-    token,
-  });
+  return get("/auth/me", { token });
 };

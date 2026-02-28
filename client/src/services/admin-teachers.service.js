@@ -2,7 +2,7 @@ import { apiRequest } from "./api";
 
 export const fetchAdminTeachers = async ({ token }) => {
   const payload = await apiRequest({
-    path: "/api/admin/teachers",
+    path: "/admin/teachers",
     token,
   });
 
@@ -11,7 +11,7 @@ export const fetchAdminTeachers = async ({ token }) => {
 
 export const fetchAdminTeacherDetails = async ({ token, teacherId }) => {
   const payload = await apiRequest({
-    path: `/api/admin/teachers/${teacherId}`,
+    path: `/admin/teachers/${teacherId}`,
     token,
   });
 
@@ -20,7 +20,7 @@ export const fetchAdminTeacherDetails = async ({ token, teacherId }) => {
 
 export const updateAdminTeacher = async ({ token, teacherId, body }) => {
   const payload = await apiRequest({
-    path: `/api/admin/teachers/${teacherId}`,
+    path: `/admin/teachers/${teacherId}`,
     method: "PUT",
     token,
     body,
@@ -31,7 +31,7 @@ export const updateAdminTeacher = async ({ token, teacherId, body }) => {
 
 export const reassignAdminTeacherGroup = async ({ token, teacherId, body }) => {
   const payload = await apiRequest({
-    path: `/api/admin/teachers/${teacherId}/group`,
+    path: `/admin/teachers/${teacherId}/group`,
     method: "PUT",
     token,
     body,
@@ -42,7 +42,7 @@ export const reassignAdminTeacherGroup = async ({ token, teacherId, body }) => {
 
 export const updateAdminTeacherStatus = async ({ token, teacherId, isActive }) => {
   const payload = await apiRequest({
-    path: `/api/admin/teachers/${teacherId}/status`,
+    path: `/admin/teachers/${teacherId}/status`,
     method: "PATCH",
     token,
     body: { isActive },

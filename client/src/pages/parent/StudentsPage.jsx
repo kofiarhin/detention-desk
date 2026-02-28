@@ -11,7 +11,7 @@ const ParentStudentsPage = () => {
   useEffect(() => {
     const load = async () => {
       try {
-        const payload = await apiRequest({ path: '/api/parent/students', token })
+        const payload = await apiRequest({ path: '/parent/students', token })
         setStudents(payload.data || [])
         setState({ loading: false, error: '' })
       } catch (error) {

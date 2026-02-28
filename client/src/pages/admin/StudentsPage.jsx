@@ -44,7 +44,7 @@ const AdminStudentsPage = () => {
 
   const loadTeachers = useCallback(async () => {
     const payload = await apiRequest({
-      path: "/api/admin/teachers?limit=200",
+      path: "/admin/teachers?limit=200",
       token,
     });
     setTeachers(payload.data || []);
@@ -58,7 +58,7 @@ const AdminStudentsPage = () => {
   const loadStudents = useCallback(async () => {
     const statusQuery = showInactive ? "" : "&status=active";
     const payload = await apiRequest({
-      path: `/api/students?page=${page}&q=${encodeURIComponent(query)}${statusQuery}`,
+      path: `/students?page=${page}&q=${encodeURIComponent(query)}${statusQuery}`,
       token,
     });
     setStudents(payload.data || []);
@@ -86,7 +86,7 @@ const AdminStudentsPage = () => {
   const createStudent = async (event) => {
     event.preventDefault();
     await apiRequest({
-      path: "/api/students",
+      path: "/students",
       method: "POST",
       token,
       body: form,
@@ -98,7 +98,7 @@ const AdminStudentsPage = () => {
 
   const updateStudent = async (student) => {
     await apiRequest({
-      path: `/api/students/${student._id}`,
+      path: `/students/${student._id}`,
       method: "PUT",
       token,
       body: student,
@@ -125,7 +125,7 @@ const AdminStudentsPage = () => {
     if (!selectedStudent?._id) return;
 
     await apiRequest({
-      path: `/api/students/${selectedStudent._id}`,
+      path: `/students/${selectedStudent._id}`,
       method: "DELETE",
       token,
     });

@@ -15,8 +15,8 @@ const ParentStudentDetailPage = () => {
     const load = async () => {
       try {
         const [studentPayload, timelinePayload] = await Promise.all([
-          apiRequest({ path: `/api/parent/students/${id}`, token }),
-          apiRequest({ path: `/api/parent/students/${id}/timeline`, token }),
+          apiRequest({ path: `/parent/students/${id}`, token }),
+          apiRequest({ path: `/parent/students/${id}/timeline`, token }),
         ])
         setStudent(studentPayload.data)
         setTimeline(timelinePayload.data || [])

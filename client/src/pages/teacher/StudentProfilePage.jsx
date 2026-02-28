@@ -71,8 +71,8 @@ const StudentProfilePage = () => {
       setMessage("");
 
       const [p, t, pol] = await Promise.all([
-        apiRequest({ path: `/api/students/${id}/profile`, token }),
-        apiRequest({ path: `/api/students/${id}/timeline`, token }),
+        apiRequest({ path: `/students/${id}/profile`, token }),
+        apiRequest({ path: `/students/${id}/timeline`, token }),
 
         // backend routes are mounted WITHOUT /api
         apiRequest({ path: `/policy`, token }).catch(() => null),
@@ -171,7 +171,7 @@ const StudentProfilePage = () => {
     try {
       const payloadByType = {
         incident: {
-          path: "/api/incidents",
+          path: "/incidents",
           body: {
             studentId: id,
             categoryId: actionForm.categoryId,
@@ -180,7 +180,7 @@ const StudentProfilePage = () => {
           },
         },
         detention: {
-          path: "/api/incidents",
+          path: "/incidents",
           body: {
             studentId: id,
             categoryId: actionForm.categoryId,
@@ -189,7 +189,7 @@ const StudentProfilePage = () => {
           },
         },
         reward: {
-          path: "/api/rewards",
+          path: "/rewards",
           body: {
             studentId: id,
             categoryId: actionForm.categoryId,
@@ -198,7 +198,7 @@ const StudentProfilePage = () => {
           },
         },
         note: {
-          path: "/api/notes",
+          path: "/notes",
           body: {
             entityType: "student",
             entityId: id,

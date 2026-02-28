@@ -19,7 +19,7 @@ const ParentChangePasswordPage = () => {
     }
     setLoading(true)
     try {
-      await apiRequest({ path: '/api/auth/change-password', method: 'POST', token, body: { currentPassword: form.currentPassword, newPassword: form.newPassword } })
+      await apiRequest({ path: '/auth/change-password', method: 'POST', token, body: { currentPassword: form.currentPassword, newPassword: form.newPassword } })
       await refreshMe()
       navigate('/parent/students', { replace: true })
     } catch (requestError) {

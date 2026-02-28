@@ -18,7 +18,7 @@ const TeacherStudentsPage = () => {
     setLoading(true);
     try {
       const payload = await apiRequest({
-        path: `/api/students?page=${page}&q=${encodeURIComponent(query)}`,
+        path: `/students?page=${page}&q=${encodeURIComponent(query)}`,
         token,
       });
       setStudents(payload.data || []);

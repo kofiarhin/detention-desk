@@ -62,7 +62,7 @@ const Topbar = ({ isParentLocked = false }) => {
     try {
       if (role === "parent") {
         const payload = await apiRequest({
-          path: "/api/parent/students",
+          path: "/parent/students",
           token,
         });
         const all = payload.data || [];
@@ -80,7 +80,7 @@ const Topbar = ({ isParentLocked = false }) => {
       }
 
       const payload = await apiRequest({
-        path: `/api/students?page=1&limit=8&q=${encodeURIComponent(trimmed)}`,
+        path: `/students?page=1&limit=8&q=${encodeURIComponent(trimmed)}`,
         token,
       });
       if (lastQueryRef.current === trimmed) setResults(payload.data || []);

@@ -63,7 +63,7 @@ const AdminTeachersPage = () => {
   const createTeacher = async (event) => {
     event.preventDefault();
     await apiRequest({
-      path: "/api/admin/teachers",
+      path: "/admin/teachers",
       method: "POST",
       token,
       body: form,

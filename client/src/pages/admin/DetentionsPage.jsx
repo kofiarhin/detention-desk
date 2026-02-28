@@ -63,7 +63,7 @@ const AdminDetentionsPage = () => {
       limit: "20",
     });
 
-    return `/api/detentions/ops?${params.toString()}`;
+    return `/detentions/ops?${params.toString()}`;
   }, [page, view]);
 
   const loadCommandCenter = useCallback(async () => {
@@ -104,7 +104,7 @@ const AdminDetentionsPage = () => {
 
     try {
       await apiRequest({
-        path: `/api/detentions/${detentionId}`,
+        path: `/detentions/${detentionId}`,
         method: "PUT",
         body: { scheduledFor: nextScheduledFor },
         token,
@@ -220,7 +220,7 @@ const AdminDetentionsPage = () => {
                               <button
                                 onClick={() =>
                                   handleAction(
-                                    `/api/detentions/${item._id}/serve`,
+                                    `/detentions/${item._id}/serve`,
                                     {},
                                     "Detention marked as served.",
                                   )
@@ -244,7 +244,7 @@ const AdminDetentionsPage = () => {
                             {canVoid(item) ? (
                               <button
                                 onClick={() =>
-                                  handleAction(`/api/detentions/${item._id}/void`, {}, "Detention voided.")
+                                  handleAction(`/detentions/${item._id}/void`, {}, "Detention voided.")
                                 }
                                 type="button"
                               >

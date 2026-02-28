@@ -25,7 +25,7 @@ export const getCategories = async ({ token, type, includeInactive = false, forc
   if (includeInactive) query.set("includeInactive", "true");
 
   const payload = await apiRequest({
-    path: `/api/categories?${query.toString()}`,
+    path: `/categories?${query.toString()}`,
     token,
   });
 

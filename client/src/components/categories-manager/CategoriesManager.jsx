@@ -58,7 +58,7 @@ const CategoriesManager = () => {
     try {
       if (editingId) {
         await apiRequest({
-          path: `/api/categories/${editingId}`,
+          path: `/categories/${editingId}`,
           method: "PUT",
           token,
           body: categoryPayload,
@@ -66,7 +66,7 @@ const CategoriesManager = () => {
         setMessage("Category updated");
       } else {
         await apiRequest({
-          path: "/api/categories",
+          path: "/categories",
           method: "POST",
           token,
           body: categoryPayload,
@@ -100,7 +100,7 @@ const CategoriesManager = () => {
     setMessage("");
     try {
       await apiRequest({
-        path: `/api/categories/${id}/toggle`,
+        path: `/categories/${id}/toggle`,
         method: "PATCH",
         token,
       });

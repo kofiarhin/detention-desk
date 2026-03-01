@@ -4,16 +4,16 @@ class UnauthorizedError extends Error {
   constructor(message = "Unauthorized") {
     super(message);
     this.name = "UnauthorizedError";
+    this.status = 401;
+    this.payload = { message };
   }
 }
 
 const API_BASE = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
 
-// Build absolute URL when VITE_API_URL exists, otherwise fall back to relative (local dev proxy)
-const buildUrl = (path) => {
-  const clean = path?.startsWith("/") ? path : `/${path || ""}`;
-  if (!API_BASE) return clean;
-  return `${API_BASE}${clean}`;
+const buildUrl = (path = "") => {
+  const clean = path.startsWith("/") ? path : `/${path}`;
+  return API_BASE ? `${API_BASE}${clean}` : clean;
 };
 
 const readErrorMessage = (payload) => {
@@ -35,16 +35,21 @@ export const apiRequest = async (path, options = {}) => {
 
   const hadAuth = Boolean(token);
 
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  let response;
+  try {
+    response = await fetch(buildUrl(path), { ...options, headers });
+  } catch (e) {
+    // Network/CORS failure => fetch rejects and there is no response/payload
+    const err = new Error(
+      "Network error. Check API URL / CORS / backend uptime.",
+    );
+    err.status = 0;
+    err.payload = { message: err.message };
+    throw err;
   }
 
-  const response = await fetch(buildUrl(path), {
-    ...options,
-    headers,
-  });
-
-  // handle empty responses safely
   const payload = await response.json().catch(() => null);
 
   if (response.status === 401) {
@@ -55,11 +60,11 @@ export const apiRequest = async (path, options = {}) => {
   if (!response.ok) {
     const err = new Error(readErrorMessage(payload));
     err.status = response.status;
-    err.payload = payload;
+    err.payload = payload || { message: err.message };
     throw err;
   }
 
-  // your API seems to return { data: ... }
+  // support both { data: ... } and raw payload
   return payload?.data ?? payload;
 };
 

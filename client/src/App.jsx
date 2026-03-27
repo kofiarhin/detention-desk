@@ -13,6 +13,7 @@ import ForgotSchoolCodePage from "./pages/forgot-school-code/ForgotSchoolCodePag
 import RevealSchoolCodePage from "./pages/reveal-school-code/RevealSchoolCodePage";
 import AdminDashboardPage from "./pages/admin/DashboardPage";
 import AdminDetentionsPage from "./pages/admin/DetentionsPage";
+import AdminStudentDetentionOpsPage from "./pages/admin/StudentDetentionOpsPage";
 import AdminStudentsPage from "./pages/admin/StudentsPage";
 import AdminTeachersPage from "./pages/admin/TeachersPage";
 import TeacherDetailsPage from "./pages/admin/TeacherDetailsPage";
@@ -63,6 +64,7 @@ const App = () => {
             />
 
             <Route element={<AdminDetentionsPage />} path="/admin/detentions" />
+            <Route element={<AdminStudentDetentionOpsPage />} path="/admin/detention-ops" />
             <Route element={<AdminParentsPage />} path="/admin/parents" />
             <Route element={<ParentDetailsPage />} path="/admin/parents/:parentLinkId" />
           </Route>

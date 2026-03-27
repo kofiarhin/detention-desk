@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 
+const Detention = require("../models/Detention");
 const Group = require("../models/Group");
 const Student = require("../models/Student");
 const { successResponse, errorResponse } = require("../utils/response");
@@ -9,6 +10,15 @@ const {
   applyStudentOwnershipScope,
 } = require("../services/studentAccessService");
 const { findOrCreateGroupByLegacyFields, buildGroupLabel } = require("../services/groupService");
+
+function getDayBounds(now) {
+  const start = new Date(now);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+  end.setMilliseconds(-1);
+  return { start, end };
+}
 
 const studentPopulation = [{ path: "groupId", select: "code label year form ownerTeacherId" }];
 
@@ -86,7 +96,15 @@ exports.createStudent = async (req, res) => {
 exports.listStudents = async (req, res) => {
   try {
     const { page, limit, skip, sort } = parseListQuery(req.query || {});
-    const { q, groupId, status } = req.query || {};
+    const { q, groupId, status, includeDetentionToday } = req.query || {};
+
+    if (
+      Object.prototype.hasOwnProperty.call(req.query || {}, "includeDetentionToday") &&
+      includeDetentionToday !== "true" &&
+      includeDetentionToday !== "false"
+    ) {
+      return res.status(400).json(errorResponse("VALIDATION_ERROR", "includeDetentionToday must be true or false"));
+    }
 
     const filter = await applyStudentOwnershipScope(req);
     if (groupId && mongoose.Types.ObjectId.isValid(groupId)) {
@@ -113,6 +131,27 @@ exports.listStudents = async (req, res) => {
       group: item.groupId || null,
       groupLabel: item.groupId?.label || (item.yearGroup && item.form ? `${item.yearGroup}${item.form}` : null),
     }));
+
+    if (includeDetentionToday === "true") {
+      try {
+        const { start, end } = getDayBounds(new Date());
+        const ids = items.map((s) => s._id);
+        const todayIds = await Detention.distinct("studentId", {
+          schoolId: req.auth.schoolId,
+          studentId: { $in: ids },
+          status: "scheduled",
+          scheduledFor: { $gte: start, $lte: end },
+        });
+        const todaySet = new Set(todayIds.map(String));
+        for (const item of normalizedItems) {
+          item.detentionToday = todaySet.has(String(item._id));
+        }
+      } catch (_err) {
+        for (const item of normalizedItems) {
+          item.detentionToday = false;
+        }
+      }
+    }
 
     return res.json(successResponse(normalizedItems, buildMeta({ page, limit, total })));
   } catch (err) {

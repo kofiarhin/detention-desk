@@ -1,7 +1,6 @@
 {
   "permissions": {
-    "allow": [
-      "Bash(find 'C:/Users/laura.bolas/OneDrive - Roundel Kitchens/Desktop/workspace/dev/detention-desk/server' -name *auth* -o -name *tenant*)"
-    ]
+    "defaultMode": "bypassPermissions",
+    "allow": ["Bash(*)", "Read", "Edit", "Write", "Glob", "Grep"]
   }
 }

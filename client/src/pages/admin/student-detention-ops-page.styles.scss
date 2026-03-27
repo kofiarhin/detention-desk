@@ -1,0 +1,150 @@
+.app-page.student-detention-ops {
+  padding: 1rem;
+  max-width: 1000px;
+  margin: 0 auto;
+  color: #e2e8f0;
+}
+
+.student-detention-ops-header h1 {
+  margin: 0 0 0.25rem;
+  font-size: 1.7rem;
+  color: #f8fafc;
+}
+
+.student-detention-ops-subtitle {
+  margin: 0 0 1.25rem;
+  color: #94a3b8;
+  font-size: 0.95rem;
+}
+
+.student-detention-ops-search {
+  margin-bottom: 1.25rem;
+}
+
+.student-detention-ops-input {
+  width: 100%;
+  max-width: 440px;
+  background: #0b1220;
+  color: #e2e8f0;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 0.65rem 0.85rem;
+  font-size: 1rem;
+
+  &:focus {
+    outline: none;
+    border-color: #6366f1;
+  }
+}
+
+.student-detention-ops-state {
+  color: #cbd5e1;
+
+  &.muted {
+    color: #64748b;
+  }
+
+  &.error {
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.45);
+    border-radius: 8px;
+    padding: 0.65rem 0.85rem;
+    color: #fca5a5;
+  }
+}
+
+.student-detention-ops-table-wrap {
+  border: 1px solid #1f2937;
+  border-radius: 12px;
+  overflow: hidden;
+  overflow-x: auto;
+}
+
+.student-detention-ops-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 560px;
+
+  th,
+  td {
+    border-bottom: 1px solid #1f2937;
+    padding: 0.8rem;
+    vertical-align: middle;
+  }
+
+  th {
+    color: #94a3b8;
+    font-size: 0.78rem;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    background: #0b1326;
+  }
+
+  tbody tr:hover {
+    background: rgba(99, 102, 241, 0.08);
+  }
+
+  a {
+    color: #a5b4fc;
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+
+.student-detention-ops-subtext {
+  color: #94a3b8;
+  font-size: 0.8rem;
+  margin-top: 0.2rem;
+}
+
+.student-detention-ops-badge {
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+
+  &.today {
+    background: rgba(251, 191, 36, 0.15);
+    border: 1px solid rgba(251, 191, 36, 0.45);
+    color: #fbbf24;
+  }
+
+  &.none {
+    color: #475569;
+  }
+}
+
+.student-detention-ops-footer {
+  margin-top: 0.85rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.student-detention-ops-meta {
+  color: #94a3b8;
+  font-size: 0.9rem;
+}
+
+.student-detention-ops-pagination {
+  display: flex;
+  gap: 0.5rem;
+
+  button {
+    background: #0b1220;
+    color: #e2e8f0;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    padding: 0.55rem 0.85rem;
+    cursor: pointer;
+
+    &:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+  }
+}

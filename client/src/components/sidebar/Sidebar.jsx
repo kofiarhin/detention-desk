@@ -12,6 +12,7 @@ const Sidebar = () => {
       { to: "/admin/teachers", label: "Teachers" },
       { to: "/admin/students", label: "Students" },
       { to: "/admin/detentions", label: "Detentions" },
+      { to: "/admin/detention-ops", label: "Detention Ops" },
       { to: "/admin/parents", label: "Parents" },
     ],
     teacher: [{ to: "/teacher/students", label: "Students" }],
